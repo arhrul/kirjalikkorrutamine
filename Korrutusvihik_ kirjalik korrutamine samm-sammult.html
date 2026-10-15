@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Korrutusvihik: kirjalik korrutamine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Baloo+2:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --desk:#eef1f6; --surface:#ffffff; --surface-2:#f5f7fb; --text:#1a2238; --muted:#566080; --line:#dbe1ec;
+  --paper:#fffefa; --grid:#d5e0f1; --ink:#1f2b57; --on-ink:#ffffff;
+  --marker:#ffe07a; --marker-soft:#fff4c4;
+  --good:#17703f; --good-soft:#e1f3e8; --warn:#9c3d06; --warn-soft:#fdeee3;
+  --c0:#b94a00; --c0s:#fde6d2;
+  --c1:#0b67a8; --c1s:#d9ecfa;
+  --c2:#a2347f; --c2s:#f6dfee;
+  --cs:#1f2b57; --css:#fff0b3;
+  --shadow:0 1px 0 rgba(31,43,87,.06), 0 14px 30px -22px rgba(31,43,87,.45);
+  --r-lg:22px; --r-md:14px; --r-sm:10px;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --desk:#11162a; --surface:#1a2036; --surface-2:#20273f; --text:#e9edf8; --muted:#a6afc9; --line:#2f3854;
+    --paper:#182035; --grid:#2a3552; --ink:#cdd7ff; --on-ink:#11162a;
+    --marker:#e8c544; --marker-soft:#3b3416;
+    --good:#6fd39a; --good-soft:#173a29; --warn:#ffb27a; --warn-soft:#3d2414;
+    --c0:#ff9c55; --c0s:#46280f;
+    --c1:#64b8f4; --c1s:#12324b;
+    --c2:#ee8fd0; --c2s:#43203a;
+    --cs:#ffffff; --css:#4b3f12;
+    --shadow:0 1px 0 rgba(0,0,0,.2), 0 16px 30px -22px rgba(0,0,0,.8);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --desk:#11162a; --surface:#1a2036; --surface-2:#20273f; --text:#e9edf8; --muted:#a6afc9; --line:#2f3854;
+  --paper:#182035; --grid:#2a3552; --ink:#cdd7ff; --on-ink:#11162a;
+  --marker:#e8c544; --marker-soft:#3b3416;
+  --good:#6fd39a; --good-soft:#173a29; --warn:#ffb27a; --warn-soft:#3d2414;
+  --c0:#ff9c55; --c0s:#46280f; --c1:#64b8f4; --c1s:#12324b; --c2:#ee8fd0; --c2s:#43203a;
+  --cs:#ffffff; --css:#4b3f12; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 80px); height:100%}
+body{margin:0; background:var(--desk); color:var(--text);
+  font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; font-size:17px; line-height:1.55;
+  -webkit-font-smoothing:antialiased}
+body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:30; background:var(--surface)}
+h1,h2,h3,.brand,.disp{font-family:"Baloo 2","Atkinson Hyperlegible",system-ui,sans-serif; letter-spacing:-.01em}
+h1{font-size:clamp(2.1rem,5vw,3.3rem); line-height:1.02; margin:0 0 14px; font-weight:700}
+h2{font-size:clamp(1.45rem,3vw,1.9rem); line-height:1.1; margin:0 0 6px; font-weight:700}
+h3{font-size:1.2rem; line-height:1.15; margin:0 0 4px; font-weight:700}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+button,input{font:inherit; color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--marker); outline-offset:2px; border-radius:8px}
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+
+/* ---------- päis ---------- */
+.top{position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:var(--surface); border-bottom:1px solid var(--line)}
+.top-in{max-width:1180px; margin:0 auto; padding:10px 20px; display:flex; align-items:center; gap:18px}
+.brand{display:flex; align-items:center; gap:10px; font-size:1.35rem; font-weight:700; background:none; border:0; padding:4px 2px; color:var(--text)}
+.logo{width:34px; height:34px; border-radius:10px; background:var(--ink); display:grid; grid-template-columns:repeat(2,1fr); gap:3px; padding:6px; flex:0 0 auto}
+.logo i{border-radius:3px; display:block}
+.logo i:nth-child(1){background:var(--on-ink); opacity:.35}
+.logo i:nth-child(2){background:var(--c0)}
+.logo i:nth-child(3){background:var(--c1)}
+.logo i:nth-child(4){background:var(--c2)}
+.nav{display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; flex:1}
+.nav::-webkit-scrollbar{display:none}
+.nav button{border:0; background:transparent; padding:9px 14px; border-radius:999px; font-weight:700; color:var(--muted); white-space:nowrap; font-size:.95rem}
+.nav button:hover{color:var(--text); background:var(--surface-2)}
+.nav button[aria-current="page"]{background:var(--ink); color:var(--on-ink)}
+.score{white-space:nowrap; font-size:.88rem; color:var(--muted); font-weight:700; display:flex; align-items:center; gap:6px}
+.score b{font-family:"Baloo 2",sans-serif; font-size:1.15rem; color:var(--text)}
+@media (max-width:820px){
+  .top-in{flex-wrap:wrap; gap:6px 12px; padding:8px 14px}
+  .nav{order:3; flex-basis:100%; margin:0 -14px; padding:0 10px 2px}
+  .score{margin-left:auto}
+}
+
+main{max-width:1180px; margin:0 auto; padding:26px 20px 60px}
+@media (max-width:820px){ main{padding:18px 14px 120px} }
+
+/* ---------- nupud ---------- */
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; border-radius:999px; padding:12px 22px; font-weight:700; border:2px solid transparent; font-size:1rem; line-height:1.2; text-align:center}
+.btn-primary{background:var(--ink); color:var(--on-ink)}
+.btn-primary:hover{filter:brightness(1.12)}
+.btn-ghost{background:transparent; border-color:var(--line); color:var(--text)}
+.btn-ghost:hover{border-color:var(--ink)}
+.btn-soft{background:var(--surface-2); color:var(--text); border-color:var(--line)}
+.btn:disabled{opacity:.4; cursor:default; filter:none}
+.btn-sm{padding:8px 14px; font-size:.9rem}
+.row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+
+/* ---------- avaleht ---------- */
+.hero{display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); gap:40px; align-items:center; padding:18px 0 44px}
+.hero p.lead{font-size:1.15rem; color:var(--muted); max-width:34em; margin-bottom:22px}
+.hero-nb{background:var(--surface); border-radius:var(--r-lg); padding:22px; box-shadow:var(--shadow); position:relative}
+.hero-cap{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px}
+@media (max-width:880px){ .hero{grid-template-columns:1fr; gap:24px; padding-bottom:30px} }
+
+.legend{display:flex; flex-wrap:wrap; gap:8px 14px; font-size:.88rem; color:var(--muted)}
+.legend span{display:inline-flex; align-items:center; gap:7px}
+.sw{width:22px; height:22px; border-radius:7px; display:inline-grid; place-items:center; font-family:"Baloo 2",sans-serif; font-weight:700; font-size:.85rem; color:#fff; flex:0 0 auto}
+.sw.k0{background:var(--c0); border:2px solid var(--c0)}
+.sw.k1{background:var(--c1s); color:var(--c1); border:2px dashed var(--c1)}
+.sw.k2{background:var(--c2s); color:var(--c2); border:2px dotted var(--c2)}
+.sw.ks{background:var(--css); color:var(--cs); border:2px solid var(--marker)}
+
+.section{margin-top:38px}
+.section-head{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:16px}
+.section-head p{color:var(--muted); margin:0; max-width:40em}
+
+.levels{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px}
+@media (max-width:880px){ .levels{grid-template-columns:1fr} }
+.level{background:var(--surface); border-radius:var(--r-lg); padding:22px 22px 20px; box-shadow:var(--shadow); border:2px solid transparent; display:flex; flex-direction:column; gap:10px}
+.level.on{border-color:var(--ink)}
+.level-top{display:flex; justify-content:space-between; align-items:flex-start; gap:12px}
+.level-num{font-family:"Baloo 2",sans-serif; font-weight:700; font-size:3rem; line-height:.85; color:var(--ink)}
+.mini-calc{font-family:"Baloo 2",sans-serif; font-weight:600; font-size:1.5rem; line-height:1.05; text-align:right; display:grid; justify-items:end}
+.mini-calc .mline{border-top:2.5px solid var(--ink); width:100%; margin-top:2px}
+.level p{color:var(--muted); font-size:.98rem; margin:0; flex:1}
+.level .row{margin-top:6px}
+
+.path{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; counter-reset:path}
+@media (max-width:980px){ .path{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:560px){ .path{grid-template-columns:1fr} }
+.path-item{background:var(--surface); border-radius:var(--r-md); padding:18px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--line); text-align:left; cursor:pointer}
+.path-item:hover{border-color:var(--ink)}
+.path-item .pn{font-family:"Baloo 2",sans-serif; font-weight:700; color:var(--muted); font-size:1rem}
+.path-item b{font-family:"Baloo 2",sans-serif; font-size:1.2rem}
+.path-item span:last-child{color:var(--muted); font-size:.93rem}
+
+.stats{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px}
+@media (max-width:760px){ .stats{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.stat{background:var(--surface); border-radius:var(--r-md); padding:16px; border:1px solid var(--line)}
+.stat b{display:block; font-family:"Baloo 2",sans-serif; font-size:2rem; line-height:1}
+.stat span{color:var(--muted); font-size:.9rem}
+.lvl-bars{margin-top:12px; display:grid; gap:8px; background:var(--surface); border-radius:var(--r-md); padding:16px; border:1px solid var(--line)}
+.lvl-bar{display:grid; grid-template-columns:minmax(150px,280px) 1fr auto; gap:12px; align-items:center; font-size:.92rem}
+@media (max-width:560px){ .lvl-bar{grid-template-columns:1fr auto} .lvl-bar .track{grid-column:1/-1; grid-row:2} }
+.track{height:10px; border-radius:6px; background:var(--surface-2); overflow:hidden; border:1px solid var(--line)}
+.track i{display:block; height:100%; background:var(--good); border-radius:6px; transition:width .4s}
+
+/* ---------- töölaud ---------- */
+.toolbar{display:flex; flex-wrap:wrap; gap:12px 18px; align-items:center; margin-bottom:16px}
+.seg{display:inline-flex; background:var(--surface); border-radius:999px; padding:4px; border:1px solid var(--line)}
+.seg button{border:0; background:transparent; border-radius:999px; padding:8px 14px; font-weight:700; color:var(--muted); white-space:nowrap; font-size:.93rem}
+.seg button[aria-pressed="true"]{background:var(--ink); color:var(--on-ink)}
+.chips{display:flex; gap:8px; overflow-x:auto; padding:2px 2px 4px; scrollbar-width:thin; max-width:100%}
+.chip{flex:0 0 auto; border:1.5px solid var(--line); background:var(--surface); border-radius:var(--r-sm); padding:6px 12px; text-align:left; line-height:1.15}
+.chip b{display:block; font-family:"Baloo 2",sans-serif; font-weight:600; font-size:1.15rem; white-space:nowrap}
+.chip small{color:var(--muted); font-size:.75rem; white-space:nowrap}
+.chip[aria-pressed="true"]{border-color:var(--ink); background:var(--marker-soft)}
+.chip:hover{border-color:var(--ink)}
+
+.modes{display:flex; gap:8px; margin-bottom:14px}
+.mode-btn{flex:1; border:2px solid var(--line); background:var(--surface); border-radius:var(--r-md); padding:12px 14px; text-align:left; display:flex; flex-direction:column; gap:1px}
+.mode-btn b{font-family:"Baloo 2",sans-serif; font-size:1.12rem}
+.mode-btn span{color:var(--muted); font-size:.85rem}
+.mode-btn[aria-pressed="true"]{border-color:var(--ink); background:var(--surface); box-shadow:inset 0 -4px 0 var(--ink)}
+
+.work{display:grid; grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr); gap:18px; align-items:start}
+@media (max-width:900px){ .work{grid-template-columns:1fr} }
+.board{background:var(--surface); border-radius:var(--r-lg); padding:16px; box-shadow:var(--shadow); min-width:0}
+.phases{display:flex; gap:6px; margin:0 0 12px; padding:0; list-style:none; flex-wrap:wrap}
+.phases li{font-size:.82rem; font-weight:700; padding:5px 11px; border-radius:999px; color:var(--muted); border:1.5px dashed var(--line); display:flex; align-items:center; gap:6px}
+.phases li .dot{width:9px; height:9px; border-radius:50%; background:currentColor; opacity:.8}
+.phases li.done{border-style:solid; color:var(--text)}
+.phases li.on{color:var(--on-ink); background:var(--ink); border:1.5px solid var(--ink)}
+.phases li.k0 .dot{background:var(--c0)} .phases li.k1 .dot{background:var(--c1)} .phases li.k2 .dot{background:var(--c2)}
+.phases li.on.k0{background:var(--c0); border-color:var(--c0); color:#fff}
+.phases li.on.k1{background:var(--c1); border-color:var(--c1); color:#fff}
+.phases li.on.k2{background:var(--c2); border-color:var(--c2); color:#fff}
+.phases li.on.k0 .dot,.phases li.on.k1 .dot,.phases li.on.k2 .dot{background:#fff}
+:root[data-theme="dark"] .phases li.on.k0,:root[data-theme="dark"] .phases li.on.k1,:root[data-theme="dark"] .phases li.on.k2{color:var(--on-ink)}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .phases li.on.k0, :root:not([data-theme="light"]) .phases li.on.k1, :root:not([data-theme="light"]) .phases li.on.k2{color:#11162a} }
+
+.calc{min-height:52px; display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; padding:10px 14px; background:var(--surface-2); border-radius:var(--r-md); margin-bottom:12px;
+  font-family:"Baloo 2",sans-serif; font-weight:600; font-size:1.45rem; line-height:1.2}
+.calc .muted{font-family:"Atkinson Hyperlegible",sans-serif; font-size:.95rem; font-weight:400}
+.calc small{font-family:"Atkinson Hyperlegible",sans-serif; font-size:.72rem; font-weight:700; color:var(--muted); margin-left:3px; vertical-align:super}
+.calc .res{font-weight:700}
+.calc .res.q{display:inline-grid; place-items:center; min-width:1.6em; border:2.5px dashed var(--ink); border-radius:10px; padding:0 6px}
+.calc .arrow{font-family:"Atkinson Hyperlegible",sans-serif; font-size:.9rem; font-weight:700; color:var(--muted); margin-left:6px}
+.calc .arrow::before{content:"→ "}
+.pill{font-family:"Atkinson Hyperlegible",sans-serif; font-size:.85rem; font-weight:700; padding:4px 10px; border-radius:999px; margin-left:4px}
+.p-0{background:var(--c0s); color:var(--c0); border:1.5px solid var(--c0)}
+.p-1{background:var(--c1s); color:var(--c1); border:1.5px dashed var(--c1)}
+.p-2{background:var(--c2s); color:var(--c2); border:1.5px dotted var(--c2)}
+.p-s{background:var(--css); color:var(--cs); border:1.5px solid var(--marker)}
+.pill-ghost{border:1.5px dashed var(--muted); color:var(--muted)}
+
+/* numbrid tekstis */
+.n{font-family:"Baloo 2",sans-serif; font-weight:700; font-size:1.12em; line-height:1; white-space:nowrap}
+.t-0{color:var(--c0); text-decoration:underline solid 2px; text-underline-offset:3px}
+.t-1{color:var(--c1); text-decoration:underline dashed 2px; text-underline-offset:3px}
+.t-2{color:var(--c2); text-decoration:underline dotted 2.5px; text-underline-offset:3px}
+.t-a{color:var(--ink)}
+.t-s{color:var(--cs); background:var(--css); border-radius:5px; padding:0 3px}
+.z{color:var(--muted); opacity:.55; font-family:"Baloo 2",sans-serif; font-weight:700; font-size:1.12em}
+
+/* ---------- vihik ---------- */
+.nb-wrap{overflow-x:auto; border-radius:var(--r-md); background:var(--paper); border:1px solid var(--line); display:flex; justify-content:center; padding:4px 0}
+.sheet{position:relative; display:grid; flex:0 0 auto;
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:var(--cell) var(--cell); background-position:-1px -1px}
+.cell{position:relative; display:flex; align-items:center; justify-content:center;
+  font-family:"Baloo 2",sans-serif; font-weight:600; font-size:calc(var(--cell)*.72); line-height:1; color:var(--ink);
+  font-variant-numeric:tabular-nums; border-radius:9px}
+.cell span{position:relative; z-index:2; padding-top:calc(var(--cell)*.08)}
+.cell.t-0{color:var(--c0)} .cell.t-1{color:var(--c1)} .cell.t-2{color:var(--c2)} .cell.t-a{color:var(--ink)}
+.cell.mini{font-size:calc(var(--cell)*.4); align-items:flex-end; justify-content:center; font-weight:700}
+.cell.mini span{padding:0 0 calc(var(--cell)*.04)}
+.cell.t-0,.cell.t-1,.cell.t-2,.cell.t-a,.cell.t-s{text-decoration:none; background:transparent; padding:0}
+.cell.t-s{color:var(--cs); font-weight:700}
+.cell.sign{color:var(--muted); font-weight:500}
+.cell.ul::after{content:""; position:absolute; left:-1px; right:-1px; bottom:-2px; height:3px; background:var(--ink); border-radius:2px; z-index:3}
+.cell.k0{--h:var(--c0); --hs:var(--c0s); --st:solid}
+.cell.k1{--h:var(--c1); --hs:var(--c1s); --st:dashed}
+.cell.k2{--h:var(--c2); --hs:var(--c2s); --st:dotted}
+.cell.ks{--h:var(--marker); --hs:var(--css); --st:solid}
+.cell.h-row,.cell.h-col{background:var(--hs)}
+.cell.h-col.ks{background:var(--marker-soft)}
+.cell.h-src::before,.cell.h-tgt::before,.cell.h-carry::before,.cell.h-start::before{content:""; position:absolute; inset:3px; border-radius:9px; border:3px var(--st) var(--h); z-index:1}
+.cell.h-tgt::before{background:var(--hs)}
+.cell.h-start::before{background:var(--hs); border-width:3px}
+.cell.h-carry::before{display:none}
+.cell.h-carry span{display:grid; place-items:center; width:calc(var(--cell)*.5); height:calc(var(--cell)*.5); padding:0; border-radius:50%;
+  border:2px var(--st) var(--h); background:var(--hs); line-height:1}
+.cell.corner{align-items:flex-start; justify-content:flex-end; font-size:calc(var(--cell)*.3); z-index:4; background:none !important; pointer-events:none}
+.cell.corner span{padding:2px 3px 0 0}
+.cell.corner.h-carry span{width:calc(var(--cell)*.36); height:calc(var(--cell)*.36); margin:1px 1px 0 0; padding:0}
+.cell.h-act{background:var(--h); color:#fff; box-shadow:0 0 0 3px var(--surface), 0 0 0 5.5px var(--h)}
+.cell.h-act.k1{outline:2px dashed #fff; outline-offset:-6px}
+.cell.h-act.k2{outline:2.5px dotted #fff; outline-offset:-6px}
+.cell.h-gap{background-image:repeating-linear-gradient(135deg, var(--hs) 0 5px, transparent 5px 10px)}
+.cell.h-gap span::after{content:""}
+.cell.new span{animation:write .38s cubic-bezier(.2,.8,.3,1.2)}
+@keyframes write{from{opacity:0; transform:translateY(-30%) scale(1.3)} to{opacity:1; transform:none}}
+.cell.h-tgt.pend::before{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){ .cell.new span, .cell.h-tgt.pend::before{animation:none} }
+:root[data-theme="dark"] .cell.h-act{color:#11162a}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .cell.h-act{color:#11162a} }
+.board .legend{margin-top:12px}
+
+/* ---------- selgituspaneel ---------- */
+.panel{background:var(--surface); border-radius:var(--r-lg); padding:18px 20px 20px; box-shadow:var(--shadow); position:sticky; top:86px}
+@media (max-width:900px){ .panel{position:static} }
+.count{display:flex; align-items:center; gap:12px; font-size:.85rem; color:var(--muted); font-weight:700; margin-bottom:12px}
+.bar{flex:1; height:8px; border-radius:5px; background:var(--surface-2); overflow:hidden; border:1px solid var(--line)}
+.bar i{display:block; height:100%; background:var(--ink); border-radius:5px; transition:width .3s}
+.say{font-size:1.08rem; line-height:1.6; margin:0}
+.ok{color:var(--good); font-weight:700}
+.tip{margin:12px 0 0; font-size:.93rem; color:var(--muted); background:var(--marker-soft); border-radius:var(--r-sm); padding:9px 12px}
+.ask{margin-top:14px; border-top:1px dashed var(--line); padding-top:14px}
+.ask-q{font-family:"Baloo 2",sans-serif; font-size:1.25rem; font-weight:700; line-height:1.25; margin:0 0 10px}
+.fb{margin:10px 0 0; padding:10px 12px; border-radius:var(--r-sm); font-size:.98rem}
+.fb.bad{background:var(--warn-soft); color:var(--warn)}
+.fb.good{background:var(--good-soft); color:var(--good); font-weight:700}
+.answer{display:flex; gap:8px; align-items:stretch}
+.answer output{flex:1; min-height:56px; border:2.5px solid var(--ink); border-radius:var(--r-md); background:var(--paper);
+  font-family:"Baloo 2",sans-serif; font-size:2rem; font-weight:700; display:flex; align-items:center; justify-content:flex-end; padding:0 16px; letter-spacing:.04em}
+.answer output.empty{color:var(--muted); font-size:1rem; font-family:"Atkinson Hyperlegible",sans-serif; font-weight:400; letter-spacing:0}
+.answer output.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-6px)} 75%{transform:translateX(6px)}}
+@media (prefers-reduced-motion:reduce){ .answer output.shake{animation:none} }
+.keys{display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:10px}
+.keys button{border:1.5px solid var(--line); background:var(--surface-2); border-radius:var(--r-sm); padding:8px 0;
+  font-family:"Baloo 2",sans-serif; font-size:1.5rem; font-weight:600; line-height:1.15}
+.keys button:hover{border-color:var(--ink)}
+.keys button:active{background:var(--marker-soft)}
+.keys .k-wide{grid-column:span 2; font-family:"Atkinson Hyperlegible",sans-serif; font-size:1rem; font-weight:700}
+.keys .k-go{grid-column:span 3; background:var(--ink); color:var(--on-ink); border-color:var(--ink); font-family:"Atkinson Hyperlegible",sans-serif; font-size:1rem; font-weight:700}
+.choices{display:grid; gap:8px}
+.choices button{border:2px solid var(--line); background:var(--surface-2); border-radius:var(--r-md); padding:11px 14px; text-align:left; font-weight:700; display:flex; align-items:center; gap:10px}
+.choices button:hover{border-color:var(--ink)}
+.choices button small{color:var(--muted); font-weight:400}
+.choices button.wrong{border-color:var(--warn); opacity:.6}
+.controls{display:grid; grid-template-columns:1fr 1.4fr; gap:8px; margin-top:16px}
+.controls .btn{width:100%; padding:13px 10px}
+.controls2{display:flex; gap:8px; margin-top:8px}
+.controls2 .btn{flex:1}
+.kbd-hint{font-size:.8rem; color:var(--muted); margin:10px 0 0; text-align:center}
+@media (max-width:900px){
+  .controls{position:fixed; left:0; right:0; bottom:0; z-index:15; margin:0; padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px)); background:var(--surface); border-top:1px solid var(--line); box-shadow:0 -10px 30px -20px rgba(0,0,0,.4)}
+  .kbd-hint{display:none}
+}
+.done-box{margin-top:14px; padding:14px; border-radius:var(--r-md); background:var(--good-soft); color:var(--good)}
+.done-box b{font-family:"Baloo 2",sans-serif; font-size:1.25rem; display:block}
+.back-link{margin-bottom:12px}
+
+/* ---------- oma tehe ---------- */
+.own{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; align-items:start}
+@media (max-width:900px){ .own{grid-template-columns:1fr} }
+.card{background:var(--surface); border-radius:var(--r-lg); padding:22px; box-shadow:var(--shadow)}
+.own-inputs{display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin:16px 0 8px}
+.own-inputs label{display:flex; flex-direction:column; gap:4px; font-size:.88rem; font-weight:700; color:var(--muted)}
+.own-inputs input{width:7.2em; font-family:"Baloo 2",sans-serif; font-size:2rem; font-weight:600; padding:6px 14px; border-radius:var(--r-md); border:2.5px solid var(--line); background:var(--paper); color:var(--text)}
+.own-inputs input:focus{border-color:var(--ink); outline:none; box-shadow:0 0 0 4px var(--marker-soft)}
+.own-inputs input.short{width:5.2em}
+.own-inputs .x{font-family:"Baloo 2",sans-serif; font-size:2rem; color:var(--muted); padding-bottom:10px}
+.err{min-height:1.5em; color:var(--warn); font-weight:700; margin:8px 0}
+.err button{margin-left:6px}
+.req{font-size:.93rem; color:var(--muted)}
+.preview-empty{color:var(--muted); text-align:center; padding:40px 10px}
+
+/* ---------- harjutamine ---------- */
+.prac{display:grid; grid-template-columns:minmax(0,1.1fr) minmax(300px,1fr); gap:18px; align-items:start}
+@media (max-width:900px){ .prac{grid-template-columns:1fr} }
+.dots{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px}
+.dots i{width:30px; height:30px; border-radius:9px; border:2px solid var(--line); display:grid; place-items:center; font-style:normal; font-size:.8rem; font-weight:700; color:var(--muted); background:var(--surface)}
+.dots i.cur{border-color:var(--ink); color:var(--text)}
+.dots i.first{background:var(--good); border-color:var(--good); color:var(--surface)}
+.dots i.later{background:var(--good-soft); border-color:var(--good); color:var(--good)}
+.dots i.helped{background:var(--marker-soft); border-color:var(--marker); color:var(--text)}
+.tier{display:inline-block; font-size:.82rem; font-weight:700; padding:3px 10px; border-radius:999px; background:var(--surface-2); color:var(--muted); border:1px solid var(--line)}
+.p-input{display:flex; gap:10px; margin-top:12px}
+.p-input input{flex:1; min-width:0; font-family:"Baloo 2",sans-serif; font-size:2rem; font-weight:700; padding:6px 16px; border-radius:var(--r-md); border:2.5px solid var(--ink); background:var(--paper); color:var(--text); text-align:right}
+.p-input input:focus{outline:none; box-shadow:0 0 0 4px var(--marker-soft)}
+
+/* ---------- tähistamine ---------- */
+#confetti{position:fixed; inset:0; pointer-events:none; z-index:50; overflow:hidden}
+#confetti i{position:absolute; top:-12px; width:10px; height:14px; border-radius:3px; animation:fall 1.5s cubic-bezier(.25,.6,.4,1) forwards}
+@keyframes fall{to{transform:translate(var(--dx), 105vh) rotate(var(--rot)); opacity:.2}}
+.toast{position:fixed; left:50%; bottom:28px; transform:translate(-50%, 140%); opacity:0; visibility:hidden; background:var(--ink); color:var(--on-ink); padding:12px 20px; border-radius:999px; font-weight:700; z-index:40; transition:transform .3s; max-width:calc(100% - 28px); text-align:center}
+.toast.show{transform:translate(-50%,0); opacity:1; visibility:visible}
+@media (max-width:900px){ .toast{bottom:96px} }
+@media (max-width:600px){
+  .mode-btn span{display:none}
+  .mode-btn{padding:10px 12px}
+  .toolbar{gap:10px}
+  .toolbar .tb-btns{width:100%}
+  .toolbar .tb-btns .btn{flex:1; padding:7px 10px; font-size:.85rem}
+  .board{padding:12px}
+  .calc{font-size:1.25rem; min-height:46px}
+  h1{font-size:2.1rem}
+}
+@media (prefers-reduced-motion:reduce){ #confetti{display:none} .toast{transition:none} }
+footer{max-width:1180px; margin:0 auto; padding:0 20px 40px; color:var(--muted); font-size:.85rem}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <button class="brand" data-go="home" aria-label="Korrutusvihik, avalehele"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Korrutusvihik</button>
+    <nav class="nav" aria-label="Peamenüü">
+      <button data-go="home">Avaleht</button>
+      <button data-go="learn">Õpi samm-sammult</button>
+      <button data-go="try">Lahenda ise</button>
+      <button data-go="own">Oma tehe</button>
+      <button data-go="practice">Harjutamine</button>
+    </nav>
+    <span class="score" id="score"></span>
+  </div>
+</header>
+<main id="app"></main>
+<footer>Korrutusvihik aitab harjutada kirjalikku korrutamist nii, nagu seda õpitakse Eesti koolis.</footer>
+<div id="confetti" aria-hidden="true"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+/* ===== Korrutusvihik: arvutusmootor ja õppetunni koostaja (DOM-ita) ===== */
+(function (root) {
+  'use strict';
+
+  var PLACE_NOM = ['ühelised', 'kümnelised', 'sajalised', 'tuhandelised', 'kümnetuhandelised', 'sajatuhandelised', 'miljonilised', 'kümnemiljonilised', 'sajamiljonilised'];
+  var PLACE_GEN = ['üheliste', 'kümneliste', 'sajaliste', 'tuhandeliste', 'kümnetuhandeliste', 'sajatuhandeliste', 'miljoniliste', 'kümnemiljoniliste', 'sajamiljoniliste'];
+  var SHIFT = ['null', 'ühe', 'kahe', 'kolme'];
+  var KOHALINE = ['', 'ühekohaline', 'kahekohaline', 'kolmekohaline', 'neljakohaline', 'viiekohaline', 'kuuekohaline'];
+  var COLOR_NAME = ['oranž', 'sinine', 'lilla'];
+
+  function fmt(n) {
+    var s = String(n);
+    return s.length >= 5 ? s.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') : s;
+  }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function pow10(k) { return Math.pow(10, k); }
+
+  /* ---------- 1. Puhas matemaatika ---------- */
+  var Engine = {
+    digitsOf: function (n) { return String(n).split('').reverse().map(Number); }, // indeks = koht
+
+    multiply: function (a, b) {
+      var A = Engine.digitsOf(a), B = Engine.digitsOf(b);
+      var partials = [];
+      B.forEach(function (db, k) {
+        if (db === 0) { partials.push({ k: k, digit: 0, zero: true, value: 0, ops: [] }); return; }
+        var carry = 0, ops = [];
+        A.forEach(function (da, i) {
+          var prod = da * db, total = prod + carry, isLast = i === A.length - 1;
+          var write = isLast ? String(total) : String(total % 10);
+          var carryOut = isLast ? 0 : Math.floor(total / 10);
+          ops.push({ i: i, da: da, db: db, prod: prod, carryIn: carry, total: total, write: write, carryOut: carryOut, isLast: isLast });
+          carry = carryOut;
+        });
+        var written = ops.map(function (o) { return o.write; }).reverse().join('');
+        partials.push({ k: k, digit: db, zero: false, value: Number(written), ops: ops });
+      });
+
+      var product = a * b;
+      var rows = partials.filter(function (p) { return !p.zero; });
+      var L = String(product).length;
+      var columns = [], carry = 0;
+      for (var p = 0; p < L; p++) {
+        var terms = [];
+        rows.forEach(function (r) {
+          var s = String(r.value), idx = p - r.k;
+          if (idx >= 0 && idx < s.length) terms.push({ k: r.k, d: Number(s[s.length - 1 - idx]) });
+        });
+        var sum = terms.reduce(function (x, t) { return x + t.d; }, 0);
+        var total = sum + carry, isLast = p === L - 1;
+        var write = isLast ? String(total) : String(total % 10);
+        var carryOut = isLast ? 0 : Math.floor(total / 10);
+        columns.push({ p: p, terms: terms, sum: sum, carryIn: carry, total: total, write: write, carryOut: carryOut, isLast: isLast });
+        carry = carryOut;
+      }
+
+      // enesekontroll: iga osakorrutis ja liitmise tulemus peavad klappima
+      rows.forEach(function (r) { if (r.value !== a * r.digit) throw new Error('Osakorrutis vale: ' + a + '·' + r.digit); });
+      var summed = columns.map(function (c) { return c.write; }).reverse().join('');
+      if (Number(summed) !== product) throw new Error('Liitmine vale: ' + a + '·' + b);
+
+      return { a: a, b: b, A: A, B: B, partials: partials, rows: rows, columns: columns, product: product, L: L };
+    },
+
+    estimate: function (n) {
+      if (n < 10) return n;
+      var p = pow10(String(n).length - 1);
+      return Math.round(n / p) * p;
+    }
+  };
+
+  /* ---------- 2. Õppetunni sammud ja vihikupaigutus ---------- */
+  function N(v, t) { return '<span class="n t-' + t + '">' + fmt(v) + '</span>'; }
+  function Z(k) { return k ? '<span class="z">' + '0'.repeat(k) + '</span>' : ''; }
+
+  function buildLesson(a, b) {
+    var S = Engine.multiply(a, b);
+    var A = S.A, B = S.B, rows = S.rows, columns = S.columns, product = S.product, L = S.L;
+    var m = B.length, hasAdd = m >= 2;
+    var W = Math.max(A.length, B.length, L) + 1;
+    function col(p) { return W - 1 - p; }
+
+    var R_MC = 0, R_A = 1, R_B = 2, nr = 3;
+    var PR = {};
+    rows.forEach(function (p) { PR[p.k] = nr++; });
+    var R_AC = hasAdd ? PR[rows[0].k] : -1; // liitmise meeldejäävad: esimese osakorrutise ruudu ülanurgas
+    var R_SUM = hasAdd ? nr++ : PR[0];
+    var nRows = nr;
+
+    var cells = [], lines = [], steps = [], phases = [];
+    function H(r, c, t, k) { return { r: r, c: c, t: t, k: k }; }
+
+    // tegurid
+    A.forEach(function (d, i) { cells.push({ r: R_A, c: col(i), ch: String(d), from: 0, t: 'a' }); });
+    B.forEach(function (d, k) { cells.push({ r: R_B, c: col(k), ch: String(d), from: 0, t: String(k) }); });
+    cells.push({ r: R_B, c: 0, ch: '×', from: 0, t: 'sign' });
+    lines.push({ r: R_B, from: 0 });
+
+    // --- samm 0: kirjutame üles
+    phases.push({ id: 'start', label: 'Kirjuta üles' });
+    var t0;
+    if (m === 1) {
+      t0 = 'Kirjutame tegurid üksteise alla nii, et ühelised oleksid ühelistes. Teine tegur ' + N(b, 0) +
+        ' läheb esimese teguri üheliste numbri ' + N(A[0], 'a') + ' alla. Korrutusmärgi paneme vasakule.';
+    } else {
+      var parts = B.map(function (d, k) { return N(d, k) + ' on ' + PLACE_GEN[k] + ' number (' + COLOR_NAME[k] + ')'; }).reverse();
+      t0 = 'Kirjutame tegurid üksteise alla nii, et numbrid oleksid oma veergudes: ühelised ühelistes, kümnelised kümnelistes. ' +
+        'Teise teguri numbritel on oma värvid: ' + parts.join(', ') + '. Sama värviga kirjutame ka iga numbri osakorrutise.';
+    }
+    var hl0 = [H(R_A, col(0), 'col', 's'), H(R_B, col(0), 'col', 's')];
+    steps.push({ phase: 'start', kind: 'start', text: t0, hl: hl0, calc: N(a, 'a') + ' · ' + bColored(),
+      tip: 'Paremad servad kohakuti: nii on iga number õiges veerus.' });
+
+    function bColored() { return B.map(function (d, k) { return N(d, k); }).reverse().join(''); }
+
+    var firstCarryTip = true, firstAddCarryTip = true, prevZero = false;
+
+    S.partials.forEach(function (P) {
+      var k = P.k, d = P.digit;
+      if (P.zero) {
+        phases.push({ id: 'k' + k, label: '0 · vahele', k: k, zero: true });
+        steps.push({ phase: 'k' + k, kind: 'zero', k: k,
+          text: 'Teise teguri ' + PLACE_GEN[k] + ' number on ' + N(0, k) + '. Iga arv korda null on null, seega annaks see osakorrutis ainult nulle. ' +
+            'Selle rea võime vahele jätta. Järgmine osakorrutis algab ikka oma numbri veerust.',
+          tip: 'Mõnes vihikus kirjutatakse siia rida nulle. See pole viga, aga vahele jätmine on lühem.',
+          hl: [H(R_B, col(k), 'act', k)], calc: N(a, 'a') + ' · ' + N(0, k) + ' = 0' });
+        prevZero = true;
+        return;
+      }
+      var pr = PR[k];
+      phases.push({ id: 'k' + k, label: 'Korruta ' + d + '-ga', k: k });
+
+      // --- sissejuhatus
+      var intro, introTip = '', ask;
+      var hlI = [H(R_B, col(k), 'act', k), H(pr, col(k), 'start', k)];
+      for (var j = 0; j < k; j++) hlI.push(H(pr, col(j), 'gap', k));
+      if (k === 0) {
+        hlI.push(H(R_A, col(0), 'src', 0));
+        if (m === 1) {
+          intro = 'Nüüd korrutame esimese teguri iga numbri arvuga ' + N(d, 0) + '. Alustame paremalt, üheliste numbrist, sest siis saame meeldejääva numbri lisada järgmisele kohale.';
+          var optsA = A.map(function (dd, i) { return { val: i, html: N(dd, 'a') + ' <small>' + PLACE_NOM[i] + '</small>' }; }).reverse();
+          if (A.length > 1) ask = { type: 'choice', q: 'Millisest esimese teguri numbrist alustame korrutamist?', options: optsA, ans: 0,
+            hint: 'Kirjalikku korrutamist alustame alati paremalt, üheliste numbrist.' };
+        } else {
+          intro = 'Alustame paremalt. Kõigepealt korrutame kogu esimese teguri ' + N(a, 'a') + ' teise teguri üheliste numbriga ' + N(d, 0) +
+            '. Tulemus on esimene osakorrutis ja see algab üheliste veerust.';
+          var optsB = B.map(function (dd, kk) { return { val: kk, k: kk, html: N(dd, kk) + ' <small>' + PLACE_NOM[kk] + '</small>' }; }).reverse();
+          ask = { type: 'choice', q: 'Millise teise teguri numbriga korrutame kõigepealt?', options: optsB, ans: 0,
+            hint: 'Kirjalikku korrutamist alustame alati paremalt, teise teguri üheliste numbrist.' };
+        }
+      } else {
+        intro = 'Nüüd on järg ' + PLACE_GEN[k] + ' numbri ' + N(d, k) + ' käes. See ' + N(d, k) + ' ei tähenda ' + d + ', vaid ' + N(d * pow10(k), k) +
+          ', sest ta asub ' + PLACE_GEN[k] + ' kohal. Seepärast kirjutame tema osakorrutise ' + SHIFT[k] + ' koha võrra vasakule: ' +
+          'osakorrutise kõige parempoolsem number läheb ' + PLACE_GEN[k] + ' veergu.' +
+          (prevZero ? ' Kümneliste number oli 0 ja selle rea jätsime vahele, seepärast on nihe kahe koha võrra.' : '');
+        introTip = 'Tühjad ruudud paremal on nagu nullid: ' + fmt(a) + ' · ' + fmt(d * pow10(k)) + ' = ' + fmt(a) + ' · ' + d + ' · ' + fmt(pow10(k)) + '.';
+        var opts = [];
+        for (var pp = 2; pp >= 0; pp--) opts.push({ val: pp, html: cap(PLACE_GEN[pp]) + ' veerust' });
+        var hints = {};
+        for (var vv = 0; vv < 3; vv++) {
+          if (vv < k) hints[vv] = d + ' on ' + PLACE_GEN[k] + ' number ja tähendab tegelikult ' + fmt(d * pow10(k)) +
+            '. Seepärast ei alusta me ' + PLACE_GEN[vv] + ' veerust.';
+          else if (vv > k) hints[vv] = 'See on liiga kaugel vasakul. ' + d + ' on ' + PLACE_GEN[k] + ' number, nii et osakorrutis algab samast veerust, kus ta ise asub.';
+        }
+        ask = { type: 'choice', q: 'Millisest veerust hakkad kirjutama ' + d + '-ga korrutamise osakorrutist?', options: opts, ans: k, hints: hints,
+          hint: 'Vaata, mis kohal number ' + d + ' teises tegurist asub. Osakorrutis algab samast veerust.' };
+      }
+      steps.push({ phase: 'k' + k, kind: 'intro', k: k, text: intro, tip: introTip, hl: hlI, ask: ask ? [ask] : null,
+        calc: N(a, 'a') + ' · ' + N(d, k) + (k ? '<span class="arrow">alates ' + PLACE_GEN[k] + ' veerust</span>' : ''),
+        askCalc: N(a, 'a') + ' · ' + bColored() });
+      prevZero = false;
+
+      // --- korrutamise sammud
+      var carryCells = [];
+      P.ops.forEach(function (o) {
+        var s = steps.length, i = o.i, place = i + k;
+        var tg = [];
+        for (var x = 0; x < o.write.length; x++) {
+          var ch = o.write[o.write.length - 1 - x];
+          cells.push({ r: pr, c: col(place + x), ch: ch, from: s, t: String(k) });
+          tg.push(H(pr, col(place + x), 'tgt', k));
+        }
+        if (o.carryOut > 0) {
+          var cc = { r: R_MC, c: col(i + 1), ch: String(o.carryOut), from: s, t: String(k), mini: true };
+          cells.push(cc); carryCells.push(cc);
+        }
+        var hl = [H(R_B, col(k), 'act', k), H(R_A, col(i), 'src', k)];
+        if (o.carryIn) hl.push(H(R_MC, col(i), 'carry', k));
+        hl = hl.concat(tg);
+
+        var t = 'Korrutame ' + N(o.db, k) + ' · ' + N(o.da, 'a') + ' = ' + o.prod;
+        if (o.carryIn) t += ' ja liidame meeles oleva ' + N(o.carryIn, k) + ': ' + o.prod + ' + ' + o.carryIn + ' = ' + o.total;
+        t += '.';
+        if (o.isLast) {
+          t += o.total >= 10 ? ' See oli esimese teguri viimane number, seega kirjutame kogu arvu ' + N(o.total, k) + ' osakorrutisse.'
+            : ' See oli viimane number, kirjutame ' + N(o.total, k) + '.';
+        } else if (o.total >= 10) {
+          t += ' Kirjutame ' + N(o.total % 10, k) + ' ' + PLACE_GEN[place] + ' veergu, ' + N(o.carryOut, k) + ' jääb meelde.';
+        } else {
+          t += ' Kirjutame ' + N(o.total, k) + ' ' + PLACE_GEN[place] + ' veergu. Meelde ei jää midagi.';
+        }
+        var tip = '';
+        if (o.da === 0) tip = o.carryIn ? 'Null korda mis tahes arv on null, aga meeles olev number tuleb ikka juurde liita.' : 'Null korda mis tahes arv on null.';
+        else if (o.carryOut > 0 && firstCarryTip) { tip = 'Meeldejääva numbri kirjutame väikselt järgmise numbri kohale, et seda mitte unustada.'; firstCarryTip = false; }
+
+        var expr = N(o.db, k) + ' · ' + N(o.da, 'a') + (o.carryIn ? ' + ' + N(o.carryIn, k) + '<small>meeles</small>' : '');
+        var res = '<b class="res">' + o.total + '</b>';
+        var tail = '';
+        if (!o.isLast && o.total >= 10) tail = '<span class="pill p-' + k + '">kirjuta ' + (o.total % 10) + '</span><span class="pill pill-ghost">meelde ' + o.carryOut + '</span>';
+        else tail = '<span class="pill p-' + k + '">kirjuta ' + o.write + '</span>';
+
+        var asks = [{ type: 'num', kind: 'mult', ans: o.total, ctx: o,
+          q: o.carryIn ? 'Korruta ' + o.db + ' · ' + o.da + ' ja liida meeles olev number. Mis tuleb?' : 'Mis on ' + o.db + ' · ' + o.da + '?' }];
+        if (o.total >= 10 && !o.isLast) asks.push({ type: 'num', kind: 'write', ans: o.total % 10, ctx: o,
+          q: 'Saime ' + o.total + '. Millise numbri kirjutad ' + PLACE_GEN[place] + ' veergu?' });
+
+        steps.push({ phase: 'k' + k, kind: 'op', k: k, text: t, tip: tip, hl: hl, ask: asks,
+          calc: expr + ' = ' + res + tail, askCalc: expr + ' = <b class="res q">?</b>' });
+      });
+
+      // --- osakorrutis valmis
+      if (m >= 2) {
+        var sD = steps.length;
+        carryCells.forEach(function (c) { c.to = sD; });
+        var rowHl = [H(R_B, col(k), 'act', k)];
+        var vs = String(P.value);
+        for (var q = 0; q < vs.length; q++) rowHl.push(H(pr, col(k + q), 'row', k));
+        var td = k === 0
+          ? 'Esimene osakorrutis on valmis: ' + N(a, 'a') + ' · ' + N(d, 0) + ' = ' + N(P.value, 0) + '.'
+          : 'Osakorrutis on valmis: ' + N(a, 'a') + ' · ' + N(d, k) + ' = ' + N(P.value, k) + '. Kuna ' + N(d, k) + ' on ' + PLACE_GEN[k] +
+            ' number, on selle rea tegelik väärtus ' + N(P.value * pow10(k), k) + '. Tühjad ruudud paremal hoiavad nullide kohta.';
+        steps.push({ phase: 'k' + k, kind: 'pdone', k: k, text: td, hl: rowHl,
+          calc: N(a, 'a') + ' · ' + N(d, k) + ' = ' + N(P.value, k) + (k ? '<span class="arrow">tegelikult ' + fmt(a) + ' · ' + fmt(d * pow10(k)) + ' = ' + fmt(P.value * pow10(k)) + '</span>' : '') });
+      } else {
+        P._carryCells = carryCells; // eemaldatakse lõpusammul
+      }
+    });
+
+    // --- liitmine
+    var rowsExpr = rows.map(function (r) { return N(r.value, r.k) + Z(r.k); }).join(' + ');
+    if (hasAdd) {
+      phases.push({ id: 'add', label: 'Liida' });
+      var sA = steps.length;
+      lines.push({ r: PR[rows[rows.length - 1].k], from: sA });
+      if (rows.length >= 2) cells.push({ r: PR[rows[1].k], c: 0, ch: '+', from: sA, t: 'sign' });
+      var hlA = [];
+      rows.forEach(function (r) {
+        var s = String(r.value);
+        for (var q = 0; q < s.length; q++) hlA.push(H(PR[r.k], col(r.k + q), 'row', r.k));
+      });
+      var single = rows.length === 1;
+      steps.push({ phase: 'add', kind: 'addintro', text: single
+          ? 'Osakorrutisi on ainult üks, sest teise teguri teised numbrid olid nullid. Tõmbame joone ja kirjutame vastuse: tühjadesse veergudesse tulevad nullid.'
+          : 'Kõik osakorrutised on kirjas. Tõmbame joone ja liidame need kokku veergude kaupa, alustades paremalt, täpselt nagu kirjalikus liitmises.',
+        tip: single ? '' : 'Tühjad ruudud osakorrutiste paremal pool loeme nullideks.',
+        hl: hlA, calc: rowsExpr,
+        ask: single ? null : [{ type: 'choice', q: 'Mida teeme nüüd osakorrutistega?', ans: 0,
+          options: [{ val: 1, html: 'Korrutame omavahel' }, { val: 0, html: 'Liidame kokku' }, { val: 2, html: 'Lahutame' }],
+          hint: 'Osakorrutised on terve korrutise tükid. Tükid tuleb kokku panna ehk liita.' }] });
+
+      columns.forEach(function (C) {
+        var s = steps.length, p = C.p;
+        var tg = [];
+        for (var x = 0; x < C.write.length; x++) {
+          cells.push({ r: R_SUM, c: col(p + x), ch: C.write[C.write.length - 1 - x], from: s, t: 's' });
+          tg.push(H(R_SUM, col(p + x), 'tgt', 's'));
+        }
+        if (C.carryOut > 0) cells.push({ r: R_AC, c: col(p + 1), ch: String(C.carryOut), from: s, t: 's', mini: true, corner: true });
+        var hl = rows.map(function (r) { return H(PR[r.k], col(p), 'col', 's'); });
+        hl = hl.concat(C.terms.map(function (t) { return H(PR[t.k], col(p), 'src', t.k); }));
+        if (C.carryIn) { var hc = H(R_AC, col(p), 'carry', 's'); hc.corner = true; hl.push(hc); }
+        hl = hl.concat(tg);
+
+        var label = cap(PLACE_NOM[p]);
+        var exprParts = C.terms.map(function (t) { return N(t.d, t.k); });
+        if (C.carryIn) exprParts.push(N(C.carryIn, 's') + '<small>meeles</small>');
+        var t, q;
+        if (!C.terms.length && !C.carryIn) {
+          t = label + ': selles veerus pole ühtegi numbrit. Kirjutame vastusesse ' + N(0, 's') + '.';
+          q = PLACE_GEN[p].charAt(0).toUpperCase() + PLACE_GEN[p].slice(1) + ' veerus pole numbreid. Mis tuleb vastusesse?';
+        } else if (!C.terms.length) {
+          t = label + ': siin on ainult meeles olev ' + N(C.carryIn, 's') + '. Kirjutame selle vastusesse.';
+          q = 'Mis tuleb ' + PLACE_GEN[p] + ' veergu?';
+        } else if (C.terms.length === 1 && !C.carryIn) {
+          t = label + ': veerus on ainult ' + N(C.terms[0].d, C.terms[0].k) + ', kirjutame selle vastusesse.';
+          q = 'Mis tuleb ' + PLACE_GEN[p] + ' veergu?';
+        } else {
+          t = label + ': ' + exprParts.join(' + ').replace(/<small>meeles<\/small>/g, '') + ' = ' + C.total + (C.carryIn ? ' (koos meeles olevaga)' : '') + '.';
+          if (C.isLast) t += C.total >= 10 ? ' See on viimane veerg, kirjutame kogu arvu ' + N(C.total, 's') + '.' : ' Kirjutame ' + N(C.total, 's') + ' vastusesse.';
+          else if (C.total >= 10) t += ' Kirjutame ' + N(C.total % 10, 's') + ', ' + N(C.carryOut, 's') + ' jääb meelde.';
+          else t += ' Kirjutame ' + N(C.total, 's') + '.';
+          q = 'Liida ' + PLACE_GEN[p] + ' veeru numbrid' + (C.carryIn ? ' ja meeles olev number' : '') + '. Mis tuleb?';
+        }
+        var tip = '';
+        if (C.carryIn && firstAddCarryTip) { tip = 'Väike number veeru kohal on meeles olev number eelmisest veerust.'; firstAddCarryTip = false; }
+        var asks = [{ type: 'num', kind: 'add', ans: C.total, ctx: C, q: q }];
+        if (C.total >= 10 && !C.isLast) asks.push({ type: 'num', kind: 'write', ans: C.total % 10, ctx: C,
+          q: 'Saime ' + C.total + '. Millise numbri kirjutad vastusesse ' + PLACE_GEN[p] + ' veergu?' });
+        var expr = exprParts.length ? exprParts.join(' + ') : N(0, 's');
+        steps.push({ phase: 'add', kind: 'col', text: t, tip: tip, hl: hl, ask: asks,
+          calc: expr + ' = <b class="res">' + C.total + '</b>' + (!C.isLast && C.total >= 10 ? '<span class="pill p-s">kirjuta ' + (C.total % 10) + '</span><span class="pill pill-ghost">meelde ' + C.carryOut + '</span>' : ''),
+          askCalc: (exprParts.length ? exprParts.join(' + ') : '…') + ' = <b class="res q">?</b>' });
+      });
+    }
+
+    // --- vastus
+    phases.push({ id: 'done', label: 'Vastus' });
+    var sF = steps.length;
+    S.partials.forEach(function (P) { if (P._carryCells) P._carryCells.forEach(function (c) { c.to = sF; }); delete P._carryCells; });
+    var hlF = [];
+    var ps = String(product);
+    for (var q2 = 0; q2 < ps.length; q2++) hlF.push(H(R_SUM, col(q2), 'row', 's'));
+    var ea = Engine.estimate(a), eb = Engine.estimate(b);
+    var estParts = [];
+    if (ea !== a) estParts.push(fmt(a) + ' ≈ ' + fmt(ea));
+    if (eb !== b) estParts.push(fmt(b) + ' ≈ ' + fmt(eb));
+    var estTip = estParts.length
+      ? 'Kontrolli hinnanguga: ' + estParts.join(' ja ') + ', ' + fmt(ea) + ' · ' + fmt(eb) + ' = ' + fmt(ea * eb) + '. Vastus ' + fmt(product) + ' on sellega sarnase suurusega, nii et see on usutav.'
+      : '';
+    var tF = hasAdd
+      ? 'Liitsime osakorrutised: ' + rowsExpr + ' = ' + N(product, 's') + '. Vastus: ' + fmt(a) + ' · ' + fmt(b) + ' = ' + N(product, 's') + '.'
+      : 'Valmis! Vastus: ' + fmt(a) + ' · ' + fmt(b) + ' = ' + N(product, 's') + '.';
+    steps.push({ phase: 'done', kind: 'final', text: tF, tip: estTip, hl: hlF,
+      calc: N(a, 'a') + ' · ' + bColored() + ' = <b class="res">' + fmt(product) + '</b>',
+      ask: [{ type: 'num', kind: 'final', ans: product, ctx: { product: product, hasAdd: hasAdd }, q: 'Loe vastus vihikust. Mis on ' + fmt(a) + ' · ' + fmt(b) + '?' }],
+      askCalc: N(a, 'a') + ' · ' + bColored() + ' = <b class="res q">?</b>' });
+
+    return { a: a, b: b, S: S, W: W, nRows: nRows, cells: cells, lines: lines, steps: steps, phases: phases,
+      R: { MC: R_MC, A: R_A, B: R_B, AC: R_AC, SUM: R_SUM, PR: PR }, level: m };
+  }
+
+  /* ---------- 3. Vastuste kontroll (Lahenda ise) ---------- */
+  function skipHint(x, y) {
+    var big = Math.max(x, y), small = Math.min(x, y);
+    if (small === 0) return 'Iga arv korda null on null.';
+    if (small === 1) return 'Iga arv korda üks on see sama arv.';
+    var seq = [];
+    for (var i = 1; i < small; i++) seq.push(big * i);
+    return 'Loe ' + big + ' kaupa: ' + seq.join(', ') + ' ja veel üks samm edasi.';
+  }
+
+  function check(ask, v, attempts) {
+    if (ask.type === 'choice') {
+      if (v === ask.ans) return { ok: true };
+      return { ok: false, msg: (ask.hints && ask.hints[v]) || ask.hint };
+    }
+    if (v === ask.ans) return { ok: true };
+    var c = ask.ctx, msg;
+    if (ask.kind === 'mult') {
+      if (c.carryIn && v === c.prod) msg = 'Korrutasid õigesti: ' + c.db + ' · ' + c.da + ' = ' + c.prod + '. Aga unustasid meeles oleva ' + c.carryIn + ' juurde liita.';
+      else if (v === c.da + c.db + c.carryIn && c.da * c.db !== c.da + c.db) msg = 'Paistab, et sa liitsid. Siin tuleb ' + c.db + ' ja ' + c.da + ' korrutada.';
+      else if (c.total >= 10 && v === c.total % 10) msg = 'See on ainult tulemuse viimane number. Kirjuta kogu tulemus, viimase numbri valime kohe järgmisena.';
+      else msg = attempts < 2
+        ? 'Päris nii ei ole. Mõtle korrutustabelile' + (c.carryIn ? ' ja ära unusta meeles olevat ' + c.carryIn + '.' : '.')
+        : 'Vihje: ' + skipHint(c.da, c.db) + (c.carryIn ? ' Siis liida meeles olev ' + c.carryIn + '.' : '');
+    } else if (ask.kind === 'write') {
+      if (v === Math.floor(c.total / 10)) msg = v + ' jääb meelde. Vastusesse kirjutame arvu ' + c.total + ' viimase numbri.';
+      else if (v === c.total) msg = 'Ühte ruutu mahub ainult üks number. Kirjuta arvu ' + c.total + ' viimane number, esimene jääb meelde.';
+      else msg = 'Vaata arvu ' + c.total + ' kõige parempoolsemat numbrit.';
+    } else if (ask.kind === 'add') {
+      var termsSum = c.sum;
+      if (c.carryIn && v === termsSum) msg = 'Veeru numbrid liitsid õigesti, aga meeles olev ' + c.carryIn + ' jäi lisamata.';
+      else if (c.total >= 10 && v === c.total % 10) msg = 'See on ainult summa viimane number. Kirjuta kogu summa, viimase numbri valime kohe järgmisena.';
+      else if (!c.terms.length && !c.carryIn) msg = 'Kui veerus pole ühtegi numbrit, on seal tegelikult null.';
+      else if (attempts < 2) msg = 'Liida veeru numbrid uuesti, ükshaaval ülevalt alla' + (c.carryIn ? ' ja lisa meeles olev ' + c.carryIn + '.' : '.');
+      else {
+        var ds = c.terms.map(function (t) { return t.d; });
+        if (c.carryIn) ds.push(c.carryIn);
+        msg = ds.length >= 2 ? 'Vihje: alusta nii: ' + ds[0] + ' + ' + ds[1] + ' = ' + (ds[0] + ds[1]) + (ds.length > 2 ? ', siis liida ülejäänud: ' + ds.slice(2).join(' + ') + '.' : '.') : 'Vihje: liida veerus olevad numbrid.';
+      }
+    } else if (ask.kind === 'final') {
+      var rev = Number(String(c.product).split('').reverse().join(''));
+      if (v === rev && rev !== c.product) msg = 'Paistab, et lugesid numbrid tagurpidi. Loe vastus vasakult paremale.';
+      else msg = c.hasAdd ? 'Vaata vihikus kõige alumist rida pärast viimast joont ja loe see vasakult paremale.' : 'Vaata rida joone all ja loe see vasakult paremale.';
+    }
+    return { ok: false, msg: msg };
+  }
+
+  /* ---------- 4. Harjutusülesannete generaator ---------- */
+  function rnd(lo, hi) { return lo + Math.floor(Math.random() * (hi - lo + 1)); }
+  function withZero(len) { // len-kohaline arv, mille keskel on null
+    var d = [rnd(1, 9)];
+    for (var i = 1; i < len; i++) d.push(rnd(1, 9));
+    d[rnd(1, len - 2 >= 1 ? len - 2 : 1)] = 0;
+    return Number(d.join(''));
+  }
+  function nz(lo, hi) { var x; do { x = rnd(lo, hi); } while (x % 10 === 0); return x; }
+
+  function genProblem(level, idx) {
+    var tier = idx < 3 ? 0 : idx < 7 ? 1 : 2, a, b;
+    if (level === 1) {
+      if (tier === 0) { a = nz(12, 49); b = rnd(2, 5); }
+      else if (tier === 1) { a = nz(102, 899); b = rnd(3, 9); }
+      else { a = idx % 2 ? withZero(4) : withZero(3); b = rnd(6, 9); }
+    } else if (level === 2) {
+      if (tier === 0) { a = nz(12, 59); b = nz(11, 39); }
+      else if (tier === 1) { a = nz(105, 899); b = nz(21, 79); }
+      else { a = idx === 9 ? nz(123, 987) : withZero(idx % 2 ? 4 : 3); b = idx === 9 ? rnd(2, 9) * 10 : nz(23, 98); }
+    } else {
+      if (tier === 0) { a = nz(101, 499); b = Number('1' + rnd(1, 3) + rnd(1, 3)); }
+      else if (tier === 1) { a = nz(102, 899); b = rnd(2, 9) * 100 + rnd(1, 9); }
+      else { a = idx % 2 ? withZero(4) : nz(234, 987); b = nz(201, 987); }
+    }
+    return { a: a, b: b, tier: tier };
+  }
+  function genRound(level) {
+    var out = [], seen = {};
+    for (var i = 0; i < 10; i++) {
+      var p, g = 0;
+      do { p = genProblem(level, i); g++; } while (seen[p.a + 'x' + p.b] && g < 20);
+      seen[p.a + 'x' + p.b] = 1; out.push(p);
+    }
+    return out;
+  }
+
+  root.KV = { Engine: Engine, buildLesson: buildLesson, check: check, genRound: genRound, genProblem: genProblem,
+    fmt: fmt, PLACE_NOM: PLACE_NOM, PLACE_GEN: PLACE_GEN, KOHALINE: KOHALINE, COLOR_NAME: COLOR_NAME };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/* ===== Korrutusvihik: kasutajaliides ===== */
+(function () {
+  'use strict';
+  var KV = window.KV, fmt = KV.fmt;
+
+  var LEVELS = {
+    1: { name: 'Ühekohalise arvuga korrutamine', short: '1. tase', ex: [347, 6],
+      desc: 'Korrutad esimese teguri iga numbri ühe arvuga ja jätad meelde, mis üle jääb.' },
+    2: { name: 'Kahekohalise arvuga korrutamine', short: '2. tase', ex: [347, 26],
+      desc: 'Kaks osakorrutist ja nende liitmine. Saad aru, miks teine rida nihkub vasakule.' },
+    3: { name: 'Kolmekohalise arvuga korrutamine', short: '3. tase', ex: [125, 304],
+      desc: 'Kolm osakorrutist, ka siis, kui teises tegurist on null.' }
+  };
+  var EXAMPLES = {
+    1: [{ a: 24, b: 3, tag: 'esimene samm' }, { a: 347, b: 6, tag: 'mitu meelespeetavat' }, { a: 408, b: 7, tag: 'null keskel' }, { a: 2519, b: 4, tag: 'neljakohaline' }],
+    2: [{ a: 347, b: 26, tag: 'hea algus' }, { a: 58, b: 47, tag: 'kaks kahekohalist' }, { a: 506, b: 38, tag: 'null keskel' }, { a: 347, b: 20, tag: 'null ühelistes' }],
+    3: [{ a: 234, b: 123, tag: 'hea algus' }, { a: 125, b: 304, tag: 'null kümnelistes' }, { a: 408, b: 205, tag: 'nullid mõlemas' }, { a: 1076, b: 358, tag: 'suurem tehe' }]
+  };
+  var PRAISE = ['Õige!', 'Täpselt!', 'Väga hea!', 'Tubli!', 'Just nii!'];
+  var TIERS = ['Soojendus', 'Harjutus', 'Väljakutse'];
+  var praiseN = 0;
+  function praise() { return PRAISE[(praiseN++) % PRAISE.length]; }
+
+  /* ---------- edenemine (brauseris) ---------- */
+  var STORE = 'korrutusvihik-v1';
+  function blankStats() { return { guided: { 1: 0, 2: 0, 3: 0 }, prac: { 1: { done: 0, first: 0 }, 2: { done: 0, first: 0 }, 3: { done: 0, first: 0 } }, streak: 0, best: 0, rounds: 0 }; }
+  var stats = blankStats();
+  try { var raw = localStorage.getItem(STORE); if (raw) { var p = JSON.parse(raw); if (p && p.guided && p.prac) stats = p; } } catch (e) {}
+  function save() { try { localStorage.setItem(STORE, JSON.stringify(stats)); } catch (e) {} }
+  function totalSolved() { return stats.guided[1] + stats.guided[2] + stats.guided[3] + stats.prac[1].done + stats.prac[2].done + stats.prac[3].done; }
+
+  /* ---------- olek ---------- */
+  var st = {
+    view: 'home', level: 2, mode: 'learn',
+    prob: { a: 347, b: 26, src: 'example' }, L: null,
+    idx: 0, pending: false, qi: 0, input: '', fb: null, attempts: 0, praise: '', wrong: {},
+    mistakes: 0, helped: false, completed: false, forward: false, returnTo: null,
+    own: { a: '', b: '', tried: false },
+    prac: null, resetAsk: false
+  };
+
+  function $(id) { return document.getElementById(id); }
+  var app = $('app');
+
+  function loadProblem(a, b, src) {
+    st.prob = { a: a, b: b, src: src || 'example' };
+    st.L = KV.buildLesson(a, b);
+    st.level = String(b).length;
+    resetRun();
+  }
+  function resetRun() {
+    st.idx = 0; st.pending = false; st.qi = 0; st.input = ''; st.fb = null; st.attempts = 0;
+    st.praise = ''; st.wrong = {}; st.mistakes = 0; st.helped = false; st.completed = false; st.forward = false;
+  }
+  function randomFor(level) {
+    var p = KV.genProblem(level, 3 + Math.floor(Math.random() * 5));
+    loadProblem(p.a, p.b, 'random');
+  }
+
+  /* ---------- navigeerimine ---------- */
+  var ROUTES = { home: '#/', learn: '#/opi', try: '#/lahenda', own: '#/oma', practice: '#/harjuta' };
+  function go(view, mode, noHash) {
+    if (view === 'learn' || view === 'try') { st.mode = view; st.view = 'work'; }
+    else st.view = view;
+    if (mode) st.mode = mode;
+    var key = st.view === 'work' ? st.mode : st.view;
+    if (!noHash && location.hash !== ROUTES[key]) { try { history.pushState(null, '', ROUTES[key]); } catch (e) { location.hash = ROUTES[key]; } }
+    render();
+    window.scrollTo(0, 0);
+  }
+  function fromHash() {
+    var h = location.hash || '#/';
+    for (var k in ROUTES) if (ROUTES[k] === h) {
+      if (k === 'learn' || k === 'try') { st.view = 'work'; st.mode = k; } else st.view = k;
+      return;
+    }
+    st.view = 'home';
+  }
+  window.addEventListener('popstate', function () { fromHash(); render(); });
+
+  /* ---------- vihiku joonistamine ---------- */
+  function notebook(L, idx, opt) {
+    opt = opt || {};
+    var map = {}, i, k;
+    function slot(r, c, corner) { k = r + ',' + c + (corner ? 'c' : ''); return map[k] || (map[k] = { r: r, c: c, hl: [], ul: false, corner: !!corner }); }
+    L.cells.forEach(function (c) { if (c.from <= idx && (c.to === undefined || idx < c.to)) slot(c.r, c.c, c.corner).cell = c; });
+    L.lines.forEach(function (ln) { if (ln.from <= idx) for (var x = 0; x < L.W; x++) slot(ln.r, x).ul = true; });
+    var hs = opt.hlStep;
+    if (hs) hs.hl.forEach(function (h) { slot(h.r, h.c, h.corner).hl.push(h); });
+    var html = '';
+    for (k in map) {
+      var s = map[k], cls = 'cell', c = s.cell;
+      if (c) cls += ' t-' + c.t + (c.mini ? ' mini' : '') + (c.t === 'sign' ? ' sign' : '');
+      var kk = null;
+      s.hl.forEach(function (h) { cls += ' h-' + h.t; kk = h.k; if (h.t === 'tgt' && opt.pending) cls += ' pend'; });
+      if (kk !== null) cls += ' k' + kk;
+      else if (c && /^[012]$/.test(c.t)) cls += ' k' + c.t;
+      if (s.ul && !s.corner) cls += ' ul';
+      if (s.corner) cls += ' corner';
+      if (c && opt.animate && c.from === idx) cls += ' new';
+      html += '<div class="' + cls + '" style="grid-row:' + (s.r + 2) + ';grid-column:' + (s.c + 2) + '">' + (c ? '<span>' + c.ch + '</span>' : '') + '</div>';
+    }
+    return '<div class="sheet" data-w="' + L.W + '" data-rows="' + L.nRows + '" data-max="' + (opt.max || 54) + '" role="img" aria-label="' +
+      (opt.label || ('Vihik: ' + fmt(L.a) + ' korda ' + fmt(L.b))) + '">' + html + '</div>';
+  }
+  function sizeSheets() {
+    var sheets = document.querySelectorAll('.sheet');
+    for (var i = 0; i < sheets.length; i++) {
+      var sh = sheets[i], wrap = sh.parentElement;
+      var W = +sh.dataset.w + 2, R = +sh.dataset.rows + 2, max = +sh.dataset.max;
+      var cell = Math.floor((wrap.clientWidth - 10) / W);
+      cell = Math.max(30, Math.min(max, cell));
+      sh.style.setProperty('--cell', cell + 'px');
+      sh.style.gridTemplateColumns = 'repeat(' + W + ',' + cell + 'px)';
+      sh.style.gridTemplateRows = 'repeat(' + R + ',' + cell + 'px)';
+    }
+  }
+  if (window.ResizeObserver) new ResizeObserver(function () { sizeSheets(); }).observe(document.body);
+  else window.addEventListener('resize', sizeSheets);
+
+  /* ---------- väikesed tükid ---------- */
+  function levelSeg(cur, act) {
+    var h = '<div class="seg" role="group" aria-label="Raskusaste">';
+    for (var l = 1; l <= 3; l++) h += '<button type="button" data-act="' + act + '" data-l="' + l + '" aria-pressed="' + (cur === l) + '" title="' + LEVELS[l].name + '">' + LEVELS[l].short + '</button>';
+    return h + '</div>';
+  }
+  function legend(m) {
+    var h = '<div class="legend" aria-label="Värvide tähendus">';
+    var names = ['üheliste number ja tema osakorrutis', 'kümneliste number ja tema osakorrutis', 'sajaliste number ja tema osakorrutis'];
+    for (var k = 0; k < (m || 3); k++) h += '<span><i class="sw k' + k + '"></i>' + KV.COLOR_NAME[k] + ': ' + names[k] + '</span>';
+    h += '<span><i class="sw ks"></i>kollane: ' + (m === 1 ? 'vastus' : 'liitmine ja vastus') + '</span>';
+    return h + '</div>';
+  }
+  function miniCalc(a, b) {
+    var bs = String(b).split('').map(function (d, i, arr) { return '<span class="n t-' + (arr.length - 1 - i) + '" style="text-decoration:none">' + d + '</span>'; }).join('');
+    return '<div class="mini-calc" aria-label="' + a + ' korda ' + b + '"><span>' + a + '</span><span>× ' + bs + '</span><span class="mline"></span></div>';
+  }
+
+  /* ---------- AVALEHT ---------- */
+  function renderHome() {
+    var demo = KV.buildLesson(347, 26), last = demo.steps.length - 1, ai = 0;
+    demo.steps.forEach(function (s, i) { if (s.kind === 'addintro') ai = i; });
+    var h = '';
+    h += '<section class="hero"><div>' +
+      '<h1>Kirjalik korrutamine samm-sammult</h1>' +
+      '<p class="lead">Iga number vihikus tuleb kuskilt. Siin näed täpselt kust: millised numbrid korrutame, mis jääb meelde ja miks teine osakorrutis algab kümneliste veerust. Pärast proovid ise.</p>' +
+      '<div class="row"><button class="btn btn-primary" data-go="learn">Alusta õppimist</button><button class="btn btn-ghost" data-go="try">Lahenda ise</button></div>' +
+      '</div><div class="hero-nb"><div class="nb-wrap">' + notebook(demo, last, { hlStep: demo.steps[ai], max: 44, label: 'Näide: 347 korda 26 on 9022' }) + '</div>' +
+      '<div class="hero-cap">' + legend(2) + '</div></div></section>';
+
+    h += '<section class="section" aria-labelledby="h-lv"><div class="section-head"><div><h2 id="h-lv">Vali raskusaste</h2>' +
+      '<p>Iga tase algab lihtsamatest tehetest ja läheb järjest keerulisemaks. Taset saad igal ajal vahetada.</p></div></div><div class="levels">';
+    for (var l = 1; l <= 3; l++) {
+      var Lv = LEVELS[l];
+      h += '<article class="level' + (st.level === l ? ' on' : '') + '"><div class="level-top"><div><div class="level-num">' + l + '</div></div>' + miniCalc(Lv.ex[0], Lv.ex[1]) + '</div>' +
+        '<h3>' + Lv.name + '</h3><p>' + Lv.desc + '</p>' +
+        '<div class="row"><button class="btn btn-primary btn-sm" data-act="lvlearn" data-l="' + l + '">Õpi</button>' +
+        '<button class="btn btn-ghost btn-sm" data-act="lvtry" data-l="' + l + '">Lahenda ise</button>' +
+        '<button class="btn btn-ghost btn-sm" data-act="lvprac" data-l="' + l + '">Harjuta</button></div></article>';
+    }
+    h += '</div></section>';
+
+    h += '<section class="section" aria-labelledby="h-path"><div class="section-head"><div><h2 id="h-path">Kuidas õppida</h2><p>Kõige paremini läheb, kui liigud selles järjekorras.</p></div></div><div class="path">' +
+      pathItem(1, 'Vaata samm-sammult', 'Lahendus tekib vihikusse number numbri haaval koos selgitusega.', 'learn') +
+      pathItem(2, 'Lahenda ise', 'Sina arvutad iga sammu. Vea korral saad vihje, mitte kohe vastust.', 'try') +
+      pathItem(3, 'Sisesta oma tehe', 'Kirjuta näiteks koduülesanne ja vaata, kuidas see lahendatakse.', 'own') +
+      pathItem(4, 'Harjuta', 'Kümme ülesannet järjest, iga järgmine natuke raskem.', 'practice') + '</div></section>';
+
+    h += '<section class="section" aria-labelledby="h-prog"><div class="section-head"><div><h2 id="h-prog">Sinu edenemine</h2><p>Edenemine salvestub selles brauseris.</p></div>' +
+      (st.resetAsk ? '<div class="row"><span class="muted">Kas kustutame kõik tulemused?</span><button class="btn btn-ghost btn-sm" data-act="resetyes">Jah, kustuta</button><button class="btn btn-soft btn-sm" data-act="resetno">Ei</button></div>'
+        : '<button class="btn btn-ghost btn-sm" data-act="resetask">Alusta nullist</button>') + '</div>';
+    var pd = stats.prac[1].done + stats.prac[2].done + stats.prac[3].done, pf = stats.prac[1].first + stats.prac[2].first + stats.prac[3].first;
+    var gd = stats.guided[1] + stats.guided[2] + stats.guided[3];
+    h += '<div class="stats">' + statBox(gd, 'tehet lahendatud ise, samm-sammult') + statBox(pd, 'harjutust lahendatud') +
+      statBox(pf, 'õige vastus esimesel katsel') + statBox(stats.best, 'pikim õigete vastuste seeria') + '</div><div class="lvl-bars">';
+    for (var lv = 1; lv <= 3; lv++) {
+      var n = stats.guided[lv] + stats.prac[lv].done, pct = Math.min(100, n * 10);
+      h += '<div class="lvl-bar"><span><b>' + LEVELS[lv].short + '</b> <span class="muted">' + LEVELS[lv].name + '</span></span><span class="track"><i style="width:' + pct + '%"></i></span><span class="muted">' + n + ' / 10</span></div>';
+    }
+    h += '</div></section>';
+    app.innerHTML = h;
+  }
+  function pathItem(n, t, d, go) { return '<button class="path-item" data-go="' + go + '"><span class="pn">' + n + '.</span><b>' + t + '</b><span>' + d + '</span></button>'; }
+  function statBox(v, t) { return '<div class="stat"><b>' + v + '</b><span>' + t + '</span></div>'; }
+
+  /* ---------- ÕPI / LAHENDA ISE ---------- */
+  function renderWork() {
+    if (!st.L) loadProblem(st.prob.a, st.prob.b, st.prob.src);
+    var h = '';
+    if (st.returnTo === 'practice') h += '<div class="back-link"><button class="btn btn-ghost btn-sm" data-act="backprac">← Tagasi harjutama</button></div>';
+    h += '<div class="toolbar">' + levelSeg(st.level, 'wlevel') + '<div class="chips" role="group" aria-label="Näidistehted">';
+    EXAMPLES[st.level].forEach(function (e) {
+      var on = e.a === st.prob.a && e.b === st.prob.b;
+      h += '<button type="button" class="chip" data-act="ex" data-a="' + e.a + '" data-b="' + e.b + '" aria-pressed="' + on + '"><b>' + e.a + ' × ' + e.b + '</b><small>' + e.tag + '</small></button>';
+    });
+    var isEx = EXAMPLES[st.level].some(function (e) { return e.a === st.prob.a && e.b === st.prob.b; });
+    if (!isEx) h += '<button type="button" class="chip" aria-pressed="true" disabled><b>' + st.prob.a + ' × ' + st.prob.b + '</b><small>' +
+      (st.prob.src === 'own' ? 'sinu tehe' : st.prob.src === 'practice' ? 'harjutusest' : 'juhuslik') + '</small></button>';
+    h += '</div><div class="row tb-btns"><button class="btn btn-ghost btn-sm" data-act="random">Uus juhuslik tehe</button><button class="btn btn-ghost btn-sm" data-go="own">Sisesta oma tehe</button></div></div>';
+
+    h += '<div class="modes" role="group" aria-label="Õppimise viis">' +
+      '<button type="button" class="mode-btn" data-act="mode" data-m="learn" aria-pressed="' + (st.mode === 'learn') + '"><b>Õpi samm-sammult</b><span>Vaata, kuidas lahendus tekib</span></button>' +
+      '<button type="button" class="mode-btn" data-act="mode" data-m="try" aria-pressed="' + (st.mode === 'try') + '"><b>Lahenda ise</b><span>Arvuta iga samm ise</span></button></div>';
+
+    h += '<div class="work"><section class="board" aria-label="Vihik"><ol class="phases" id="phases"></ol><div class="calc" id="calc"></div>' +
+      '<div class="nb-wrap" id="nbwrap"></div>' + legend(st.L.level) + '</section>' +
+      '<section class="panel" id="panel" aria-live="polite"></section></div>';
+    app.innerHTML = h;
+    updateWork();
+  }
+
+  function curStep() { return st.pending ? st.L.steps[st.idx + 1] : st.L.steps[st.idx]; }
+
+  function updateWork() {
+    var L = st.L, steps = L.steps, last = steps.length - 1, step = curStep();
+    var fid = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fid : null;
+
+    // faasid
+    var phaseIdx = 0;
+    L.phases.forEach(function (p, i) { if (p.id === step.phase) phaseIdx = i; });
+    $('phases').innerHTML = L.phases.map(function (p, i) {
+      var cls = (i === phaseIdx ? 'on' : i < phaseIdx ? 'done' : '') + (p.k !== undefined ? ' k' + p.k : '');
+      return '<li class="' + cls + '"' + (i === phaseIdx ? ' aria-current="step"' : '') + '>' + (p.k !== undefined ? '<span class="dot"></span>' : '') + p.label + '</li>';
+    }).join('');
+
+    // arvutusriba
+    $('calc').innerHTML = st.pending ? (step.askCalc || step.calc || '') : (step.calc || '');
+
+    // vihik
+    $('nbwrap').innerHTML = notebook(L, st.idx, { hlStep: step, pending: st.pending, animate: st.forward && !st.pending && st.idx > 0,
+      label: 'Vihik: ' + fmt(L.a) + ' korda ' + fmt(L.b) + ', samm ' + (st.idx + 1) + ' / ' + steps.length });
+    sizeSheets();
+
+    // paneel
+    var shown = st.idx + 1 + (st.pending ? 1 : 0);
+    var h = '<div class="count"><span>Samm ' + shown + ' / ' + steps.length + '</span><span class="bar"><i style="width:' + ((st.idx + 1) / steps.length * 100) + '%"></i></span></div>';
+    if (st.pending) {
+      var ask = step.ask[st.qi];
+      h += '<p class="say"><b>Sinu kord!</b> ' + (st.qi === 0 ? 'Vaata vihikus esile tõstetud numbreid.' : '') + '</p>';
+      h += '<div class="ask"><p class="ask-q">' + ask.q + '</p>';
+      if (ask.type === 'num') {
+        h += '<div class="answer"><output id="out" class="' + (st.input ? '' : 'empty') + '" aria-live="polite">' + (st.input || 'Vali numbrid klaviatuurilt') + '</output></div><div class="keys" role="group" aria-label="Numbriklaviatuur">';
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 0].forEach(function (d) { h += '<button type="button" data-act="key" data-k="' + d + '" data-fid="k' + d + '">' + d + '</button>'; });
+        h += '<button type="button" class="k-wide" data-act="bksp" data-fid="bk" aria-label="Kustuta viimane number">⌫ Kustuta</button><button type="button" class="k-go" data-act="submit" data-fid="go">Kontrolli</button></div>';
+      } else {
+        h += '<div class="choices">';
+        ask.options.forEach(function (o) {
+          h += '<button type="button" data-act="choice" data-v="' + o.val + '" data-fid="ch' + o.val + '" class="' + (st.wrong[o.val] ? 'wrong' : '') + '">' + o.html + '</button>';
+        });
+        h += '</div>';
+      }
+      if (st.fb) h += '<p class="fb ' + st.fb.cls + '" role="status">' + st.fb.msg + '</p>';
+      h += '</div>';
+    } else {
+      h += '<p class="say">' + (st.praise ? '<span class="ok">' + st.praise + '</span> ' : '') + step.text + '</p>';
+      if (step.tip) h += '<p class="tip">' + step.tip + '</p>';
+      if (st.idx === last) {
+        if (st.mode === 'try' && st.completed) {
+          h += '<div class="done-box"><b>' + (st.mistakes === 0 && !st.helped ? 'Lahendasid kogu tehte ise, ühegi veata!' : 'Lahendasid kogu tehte läbi!') + '</b>' +
+            (st.mistakes ? 'Vigu tuli ette ' + st.mistakes + ', aga parandasid need ise.' : st.helped ? 'Mõnel sammul vaatasid vastust, järgmine kord proovi ilma.' : 'Proovi nüüd mõnda teist tehet.') + '</div>';
+        } else if (st.mode === 'learn') {
+          h += '<div class="row" style="margin-top:14px"><button class="btn btn-soft btn-sm" data-act="mode" data-m="try" data-fid="totry">Lahenda sama tehe ise</button></div>';
+        }
+      }
+    }
+    var nextLabel = st.pending ? 'Näita vastust' : st.idx === last ? 'Uus tehe' : 'Järgmine samm';
+    h += '<div class="controls"><button class="btn btn-ghost" data-act="back" data-fid="back"' + (st.idx === 0 && !st.pending ? ' disabled' : '') + '>Eelmine samm</button>' +
+      '<button class="btn ' + (st.pending ? 'btn-soft' : 'btn-primary') + '" data-act="next" data-fid="next">' + nextLabel + '</button></div>' +
+      '<div class="controls2"><button class="btn btn-ghost btn-sm" data-act="restart" data-fid="restart">Alusta uuesti</button>' +
+      '<button class="btn btn-ghost btn-sm" data-act="solution" data-fid="sol"' + (st.idx === last ? ' disabled' : '') + '>Näita lahendust</button></div>' +
+      '<p class="kbd-hint">Klaviatuur: nooled ← → liiguvad sammude vahel' + (st.mode === 'try' ? ', numbrid ja Enter vastamiseks' : '') + '.</p>';
+    $('panel').innerHTML = h;
+    if (fid) { var el = document.querySelector('[data-fid="' + fid + '"]'); if (el && !el.disabled) el.focus({ preventScroll: true }); }
+  }
+
+  function goNext() {
+    var steps = st.L.steps, last = steps.length - 1;
+    st.praise = ''; st.fb = null;
+    if (st.pending) { reveal(); return; }
+    if (st.idx >= last) { randomFor(st.level); renderWork(); return; }
+    if (st.mode === 'try' && steps[st.idx + 1].ask) {
+      st.pending = true; st.qi = 0; st.input = ''; st.attempts = 0; st.wrong = {};
+    } else { st.idx++; st.forward = true; }
+    updateWork();
+  }
+  function goBack() {
+    st.praise = ''; st.fb = null; st.forward = false;
+    if (st.pending) st.pending = false;
+    else if (st.idx > 0) st.idx--;
+    updateWork();
+  }
+  function reveal() {
+    st.pending = false; st.idx++; st.forward = true; st.helped = true; st.praise = ''; st.fb = null;
+    if (st.idx === st.L.steps.length - 1) complete();
+    updateWork();
+  }
+  function answer(v) {
+    var step = st.L.steps[st.idx + 1], ask = step.ask[st.qi];
+    var res = KV.check(ask, v, st.attempts);
+    if (res.ok) {
+      if (st.qi < step.ask.length - 1) {
+        st.qi++; st.input = ''; st.attempts = 0; st.wrong = {};
+        st.fb = { cls: 'good', msg: praise() + ' Tulemus on ' + ask.ans + '.' };
+      } else {
+        st.pending = false; st.idx++; st.forward = true; st.praise = praise(); st.fb = null;
+        if (st.idx === st.L.steps.length - 1) complete();
+      }
+    } else {
+      st.attempts++; st.mistakes++;
+      if (ask.type === 'choice') st.wrong[v] = true;
+      st.input = '';
+      st.fb = { cls: 'bad', msg: res.msg };
+    }
+    updateWork();
+    if (!res.ok && ask.type === 'num') { var o = $('out'); if (o) o.classList.add('shake'); }
+  }
+  function complete() {
+    if (st.completed || st.mode !== 'try') return;
+    st.completed = true;
+    stats.guided[st.L.level]++; save(); updateScore();
+    celebrate(st.mistakes === 0 && !st.helped ? 'Ühegi veata! Suurepärane.' : 'Tehe lahendatud!');
+  }
+
+  /* ---------- OMA TEHE ---------- */
+  function validateOwn(aS, bS, level) {
+    aS = String(aS).replace(/\s+/g, ''); bS = String(bS).replace(/\s+/g, '');
+    if (!aS || !bS) return { ok: false, msg: 'Kirjuta mõlemasse lahtrisse arv.' };
+    if (!/^\d+$/.test(aS) || !/^\d+$/.test(bS)) return { ok: false, msg: 'Kasuta ainult numbreid 0–9.' };
+    if (Number(aS) === 0 || Number(bS) === 0) return { ok: false, msg: 'Null korda ükskõik mis on null. Vali nullist suuremad arvud.' };
+    if (/^0/.test(aS) || /^0/.test(bS)) return { ok: false, msg: 'Arv ei saa alata nulliga. Kustuta algusest null.' };
+    if (aS.length > 5) return { ok: false, msg: 'Esimene tegur võib olla kuni viiekohaline (kuni 99 999).' };
+    if (bS.length > 3) return { ok: false, msg: 'Teine tegur võib olla kuni kolmekohaline (kuni 999).' };
+    if (bS.length !== level) return { ok: false, fix: bS.length, msg: 'Teine tegur ' + bS + ' on ' + KV.KOHALINE[bS.length] + ', aga valitud on ' + LEVELS[level].short + ' (' + LEVELS[level].name.toLowerCase() + ').' };
+    return { ok: true, a: Number(aS), b: Number(bS) };
+  }
+  function renderOwn() {
+    var h = '<div class="own"><section class="card"><h2>Sisesta oma tehe</h2>' +
+      '<p class="muted">Kirjuta kaks arvu. Näitame, kuidas need vihikusse kirjutada ja lahendame samm-sammult. Võid ka ise lahendada.</p>' +
+      levelSeg(st.level, 'olevel') + '<p class="req" style="margin-top:10px">Teine tegur peab olema <b>' + KV.KOHALINE[st.level] + '</b>. Esimene tegur võib olla kuni viiekohaline.</p>' +
+      '<div class="own-inputs"><label>Esimene tegur<input id="oa" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="347" value="' + st.own.a + '"></label>' +
+      '<span class="x" aria-hidden="true">×</span><label>Teine tegur<input id="ob" class="short" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="' + LEVELS[st.level].ex[1] + '" value="' + st.own.b + '"></label></div>' +
+      '<p class="err" id="oerr" role="alert"></p>' +
+      '<div class="row"><button class="btn btn-primary" data-act="ownlearn">Alusta lahendamist</button><button class="btn btn-ghost" data-act="owntry">Lahenda ise</button></div>' +
+      '<p class="muted" style="margin:18px 0 6px; font-size:.9rem">Või proovi mõnda neist:</p><div class="chips">';
+    [[24, 3], [347, 26], [125, 304], [408, 205], [9087, 6], [760, 45]].forEach(function (p) {
+      h += '<button type="button" class="chip" data-act="ownfill" data-a="' + p[0] + '" data-b="' + p[1] + '"><b>' + p[0] + ' × ' + p[1] + '</b><small>' + LEVELS[String(p[1]).length].short + '</small></button>';
+    });
+    h += '</div></section><section class="card" aria-label="Eelvaade"><h3>Nii näeb see vihikus välja</h3><div id="oprev" style="margin-top:12px"></div></section></div>';
+    app.innerHTML = h;
+    updateOwn();
+  }
+  function updateOwn() {
+    var v = validateOwn(st.own.a, st.own.b, st.level), err = $('oerr'), pv = $('oprev');
+    if (!err) return;
+    if (st.own.tried || (st.own.b && v.fix)) {
+      err.innerHTML = v.ok ? '' : v.msg + (v.fix && v.fix <= 3 ? ' <button class="btn btn-soft btn-sm" data-act="fixlevel" data-l="' + v.fix + '">Vali ' + v.fix + '. tase</button>' : '');
+    } else err.innerHTML = '';
+    if (v.ok) {
+      var L = KV.buildLesson(v.a, v.b);
+      pv.innerHTML = '<div class="nb-wrap">' + notebook(L, 0, { max: 50 }) + '</div><p class="muted" style="margin-top:10px; font-size:.93rem">' +
+        (L.level > 1 ? 'Tuleb ' + L.S.rows.length + ' osakorrutis' + (L.S.rows.length > 1 ? 't' : '') + ' ja nende liitmine.' : 'Tuleb üks korrutamise rida.') + ' Kokku ' + L.steps.length + ' sammu.</p>';
+      sizeSheets();
+    } else pv.innerHTML = '<p class="preview-empty">Kirjuta kaks arvu ja siia ilmub tehe nii, nagu see vihikusse kirjutatakse.</p>';
+  }
+  function startOwn(mode) {
+    st.own.tried = true;
+    var v = validateOwn(st.own.a, st.own.b, st.level);
+    if (!v.ok) { updateOwn(); var i = $(v.msg.indexOf('Esimene') === 0 ? 'oa' : 'ob'); if (i) i.focus(); return; }
+    loadProblem(v.a, v.b, 'own'); st.returnTo = null;
+    go(mode);
+  }
+
+  /* ---------- HARJUTAMINE ---------- */
+  function newRound(level) {
+    st.prac = { level: level, items: KV.genRound(level), i: 0, res: [], attempts: 0, fb: null, state: 'ask', helped: false, input: '' };
+  }
+  function renderPractice() {
+    if (!st.prac || st.prac.level !== st.level) newRound(st.level);
+    var P = st.prac, h = '<div class="toolbar">' + levelSeg(P.level, 'plevel') + '<span class="muted">' + LEVELS[P.level].name + '</span></div>';
+    var dots = '<div class="dots" aria-label="Vooru edenemine">';
+    for (var i = 0; i < 10; i++) {
+      var r = P.res[i], cls = r || (i === P.i && P.state !== 'end' ? 'cur' : '');
+      dots += '<i class="' + cls + '" title="Ülesanne ' + (i + 1) + '">' + (i + 1) + '</i>';
+    }
+    dots += '</div>';
+    if (P.state === 'end') {
+      var first = P.res.filter(function (x) { return x === 'first'; }).length;
+      h += '<section class="card" style="max-width:640px">' + dots + '<h2>Voor on läbi!</h2><p>Lahendasid kõik 10 ülesannet. Esimesel katsel õigesti: <b>' + first + ' / 10</b>.</p>' +
+        '<p class="muted">' + (first >= 8 ? 'Väga hea tulemus. Proovi järgmist taset!' : first >= 5 ? 'Hea töö. Veel üks voor ja läheb veel paremini.' : 'Vaata mõni tehe läbi režiimis „Õpi samm-sammult” ja proovi uuesti.') + '</p>' +
+        '<div class="row"><button class="btn btn-primary" data-act="pnew">Uus voor</button>' + (P.level < 3 ? '<button class="btn btn-ghost" data-act="plevel" data-l="' + (P.level + 1) + '">Proovi ' + (P.level + 1) + '. taset</button>' : '') + '</div></section>';
+      app.innerHTML = h; return;
+    }
+    var it = P.items[P.i], L = KV.buildLesson(it.a, it.b);
+    h += '<div class="prac"><section class="board"><div class="nb-wrap">' + notebook(L, 0, { max: 56, label: 'Ülesanne: ' + it.a + ' korda ' + it.b }) + '</div>' + legend(L.level) + '</section>';
+    h += '<section class="panel">' + dots + '<div class="row" style="justify-content:space-between"><span class="disp" style="font-weight:700">Ülesanne ' + (P.i + 1) + ' / 10</span><span class="tier">' + TIERS[it.tier] + '</span></div>';
+    h += '<p class="ask-q" style="margin-top:12px">Mis on ' + fmt(it.a) + ' · ' + fmt(it.b) + '?</p><p class="muted" style="font-size:.93rem">Arvuta vihikus või paberil kirjalikult ja kirjuta vastus.</p>';
+    if (P.state === 'ask') {
+      h += '<div class="p-input"><input id="pin" inputmode="numeric" autocomplete="off" aria-label="Sinu vastus" value="' + P.input + '"><button class="btn btn-primary" data-act="pcheck">Kontrolli</button></div>';
+      if (P.fb) h += '<p class="fb bad" role="status">' + P.fb + '</p><div class="row" style="margin-top:10px"><button class="btn btn-soft btn-sm" data-act="ptry">Lahenda samm-sammult</button><button class="btn btn-ghost btn-sm" data-act="plearn">Vaata lahendust</button></div>';
+    } else {
+      h += '<p class="fb good" role="status">' + (P.res[P.i] === 'first' ? praise() + ' ' : 'Õige! ') + fmt(it.a) + ' · ' + fmt(it.b) + ' = ' + fmt(it.a * it.b) + '.</p>' +
+        '<div class="row" style="margin-top:12px"><button class="btn btn-primary" data-act="pnext" id="pnext">' + (P.i === 9 ? 'Vaata tulemust' : 'Järgmine ülesanne') + '</button><button class="btn btn-ghost btn-sm" data-act="plearn">Vaata lahenduskäiku</button></div>';
+    }
+    h += '</section></div>';
+    app.innerHTML = h;
+    sizeSheets();
+    var f = $('pin') || $('pnext'); if (f) f.focus({ preventScroll: true });
+  }
+  function practiceCheck() {
+    var P = st.prac, it = P.items[P.i], inp = $('pin');
+    var s = (inp ? inp.value : '').replace(/\s+/g, '');
+    P.input = s;
+    if (!s) { P.fb = 'Kirjuta kõigepealt vastus.'; renderPractice(); return; }
+    if (!/^\d+$/.test(s)) { P.fb = 'Vastuses saavad olla ainult numbrid.'; renderPractice(); return; }
+    var v = Number(s), prod = it.a * it.b;
+    if (v === prod) {
+      var r = P.helped ? 'helped' : P.attempts === 0 ? 'first' : 'later';
+      P.res[P.i] = r; P.state = 'right'; P.fb = null;
+      var lv = String(it.b).length;
+      stats.prac[lv].done++;
+      if (r === 'first') { stats.prac[lv].first++; stats.streak++; stats.best = Math.max(stats.best, stats.streak); celebrate(stats.streak >= 3 ? stats.streak + ' õiget järjest!' : 'Õige vastus!'); }
+      save(); updateScore();
+    } else {
+      if (P.attempts === 0) { stats.streak = 0; save(); }
+      P.attempts++;
+      var lastOk = v % 10 === prod % 10, lenOk = String(v).length === String(prod).length;
+      var a0 = it.a % 10, b0 = it.b % 10;
+      if (!lastOk) P.fb = 'Päris nii ei ole. Vaata vastuse viimast numbrit: üheliste numbrid ' + a0 + ' · ' + b0 + ' = ' + (a0 * b0) + ', nii et vastus peab lõppema numbriga ' + (prod % 10) + '.';
+      else if (!lenOk) P.fb = 'Viimane number on õige, aga arv on liiga ' + (String(v).length < String(prod).length ? 'väike' : 'suur') + '. Hinda: ' + fmt(KV.Engine.estimate(it.a)) + ' · ' + fmt(KV.Engine.estimate(it.b)) + ' = ' + fmt(KV.Engine.estimate(it.a) * KV.Engine.estimate(it.b)) + '. Kontrolli, kas osakorrutised on õigetes veergudes.';
+      else P.fb = 'Viimane number ja suurus sobivad. Kontrolli meelespeetavaid numbreid ja osakorrutiste liitmist.';
+      P.input = '';
+    }
+    renderPractice();
+  }
+  function practiceOpen(mode) {
+    var P = st.prac, it = P.items[P.i];
+    if (P.state === 'ask') P.helped = true;
+    loadProblem(it.a, it.b, 'practice'); st.returnTo = 'practice';
+    go(mode);
+  }
+
+  /* ---------- tähistamine ---------- */
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function celebrate(msg) {
+    toast(msg);
+    if (reduce) return;
+    var c = $('confetti'), colors = ['var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--marker)'], h = '';
+    for (var i = 0; i < 36; i++) {
+      h += '<i style="left:' + (Math.random() * 100) + '%;background:' + colors[i % 4] + ';--dx:' + (Math.random() * 160 - 80) + 'px;--rot:' + (Math.random() * 720 - 360) + 'deg;animation-delay:' + (Math.random() * .25) + 's"></i>';
+    }
+    c.innerHTML = h;
+    clearTimeout(celebrate.t); celebrate.t = setTimeout(function () { c.innerHTML = ''; }, 2000);
+  }
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast.t); toast.t = setTimeout(function () { t.classList.remove('show'); }, 2400);
+  }
+  function updateScore() { $('score').innerHTML = 'Lahendatud <b>' + totalSolved() + '</b>'; }
+
+  /* ---------- peamine render ---------- */
+  function render() {
+    var key = st.view === 'work' ? st.mode : st.view;
+    var navs = document.querySelectorAll('.nav button');
+    for (var i = 0; i < navs.length; i++) {
+      if (navs[i].dataset.go === key) navs[i].setAttribute('aria-current', 'page'); else navs[i].removeAttribute('aria-current');
+    }
+    document.title = { home: 'Korrutusvihik: kirjalik korrutamine', learn: 'Õpi samm-sammult · Korrutusvihik', try: 'Lahenda ise · Korrutusvihik', own: 'Oma tehe · Korrutusvihik', practice: 'Harjutamine · Korrutusvihik' }[key];
+    if (st.view === 'home') renderHome();
+    else if (st.view === 'work') renderWork();
+    else if (st.view === 'own') renderOwn();
+    else renderPractice();
+    sizeSheets();
+  }
+
+  /* ---------- sündmused ---------- */
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest ? ev.target.closest('[data-go],[data-act]') : null;
+    if (!t || t.disabled) return;
+    if (t.dataset.go) {
+      var g = t.dataset.go;
+      if ((g === 'learn' || g === 'try') && st.view !== 'work') { st.returnTo = null; }
+      if (g === 'try' && st.mode !== 'try') resetRun();
+      if (g === 'practice' && st.prac && st.prac.level !== st.level) newRound(st.level);
+      go(g); return;
+    }
+    var a = t.dataset.act, l = +t.dataset.l;
+    switch (a) {
+      case 'lvlearn': case 'lvtry':
+        st.level = l; loadProblem(EXAMPLES[l][0].a, EXAMPLES[l][0].b); st.returnTo = null; go(a === 'lvlearn' ? 'learn' : 'try'); break;
+      case 'lvprac': st.level = l; newRound(l); go('practice'); break;
+      case 'resetask': st.resetAsk = true; renderHome(); break;
+      case 'resetno': st.resetAsk = false; renderHome(); break;
+      case 'resetyes': stats = blankStats(); save(); st.resetAsk = false; updateScore(); renderHome(); toast('Tulemused kustutatud.'); break;
+      case 'wlevel': st.level = l; loadProblem(EXAMPLES[l][0].a, EXAMPLES[l][0].b); st.returnTo = null; renderWork(); break;
+      case 'ex': loadProblem(+t.dataset.a, +t.dataset.b); st.returnTo = null; renderWork(); break;
+      case 'random': randomFor(st.level); st.returnTo = null; renderWork(); break;
+      case 'mode':
+        var m = t.dataset.m;
+        if (m === st.mode) break;
+        if (m === 'try') resetRun(); else { st.pending = false; st.fb = null; st.praise = ''; }
+        go(m); break;
+      case 'next': goNext(); break;
+      case 'back': goBack(); break;
+      case 'restart': resetRun(); updateWork(); break;
+      case 'solution': st.pending = false; st.fb = null; st.praise = ''; if (st.mode === 'try') st.helped = true; st.idx = st.L.steps.length - 1; st.forward = false; updateWork(); break;
+      case 'key': if (st.input.length < 7) { st.input = (st.input === '0' ? '' : st.input) + t.dataset.k; } st.fb = st.fb && st.fb.cls === 'good' ? st.fb : null; updateWork(); break;
+      case 'bksp': st.input = st.input.slice(0, -1); updateWork(); break;
+      case 'submit': submitNum(); break;
+      case 'choice': answer(+t.dataset.v); break;
+      case 'backprac': st.returnTo = null; go('practice'); break;
+      case 'olevel': st.level = l; renderOwn(); break;
+      case 'fixlevel': st.level = l; renderOwn(); break;
+      case 'ownfill': st.own.a = t.dataset.a; st.own.b = t.dataset.b; st.level = String(t.dataset.b).length; st.own.tried = false; renderOwn(); break;
+      case 'ownlearn': startOwn('learn'); break;
+      case 'owntry': startOwn('try'); break;
+      case 'plevel': st.level = l; newRound(l); renderPractice(); break;
+      case 'pnew': newRound(st.prac.level); renderPractice(); break;
+      case 'pcheck': practiceCheck(); break;
+      case 'pnext': var P = st.prac; P.i++; P.attempts = 0; P.helped = false; P.fb = null; P.input = ''; P.state = P.i >= 10 ? 'end' : 'ask'; if (P.i >= 10) stats.rounds++, save(); renderPractice(); break;
+      case 'ptry': practiceOpen('try'); break;
+      case 'plearn': practiceOpen('learn'); break;
+    }
+  });
+  function submitNum() {
+    if (!st.pending) return;
+    if (st.input === '') { st.fb = { cls: 'bad', msg: 'Vali kõigepealt numbrid klaviatuurilt.' }; updateWork(); return; }
+    answer(Number(st.input));
+  }
+  document.addEventListener('input', function (ev) {
+    var id = ev.target.id;
+    if (id === 'oa' || id === 'ob') {
+      ev.target.value = ev.target.value.replace(/[^\d]/g, '');
+      st.own[id === 'oa' ? 'a' : 'b'] = ev.target.value; updateOwn();
+    } else if (id === 'pin') { ev.target.value = ev.target.value.replace(/[^\d]/g, ''); st.prac.input = ev.target.value; }
+  });
+  document.addEventListener('keydown', function (ev) {
+    var tag = ev.target && ev.target.tagName;
+    if (tag === 'INPUT') {
+      if (ev.key === 'Enter') {
+        if (ev.target.id === 'pin') { ev.preventDefault(); practiceCheck(); }
+        else if (ev.target.id === 'oa' || ev.target.id === 'ob') { ev.preventDefault(); startOwn('learn'); }
+      }
+      return;
+    }
+    if (st.view !== 'work' || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    var ask = st.pending ? curStep().ask[st.qi] : null;
+    if (ask && ask.type === 'num' && /^[0-9]$/.test(ev.key)) { if (st.input.length < 7) st.input = (st.input === '0' ? '' : st.input) + ev.key; if (st.fb && st.fb.cls !== 'good') st.fb = null; updateWork(); ev.preventDefault(); }
+    else if (ask && ask.type === 'num' && ev.key === 'Backspace') { st.input = st.input.slice(0, -1); updateWork(); ev.preventDefault(); }
+    else if (ask && ask.type === 'num' && ev.key === 'Enter') { submitNum(); ev.preventDefault(); }
+    else if (ev.key === 'ArrowRight' && !st.pending) { goNext(); ev.preventDefault(); }
+    else if (ev.key === 'ArrowLeft') { goBack(); ev.preventDefault(); }
+  });
+
+  // algus
+  fromHash();
+  loadProblem(347, 26);
+  updateScore();
+  render();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(sizeSheets);
+})();
+</script></body></html>
